@@ -37,7 +37,7 @@ As Delphi developers, we often face the challenge of implementing REST API clien
 
 If you find OpenAPIClientWizard useful, please give it a **star**. Your support is greatly appreciated!
 
-You can also support my work by buying me a coffee. This helps me continue developing this plugin and other tools like [ChatGPTWizard]() and [EasyDBMigrator]().
+You can also support my work by buying me a coffee. This helps me continue developing this plugin and other tools like [ChatGPTWizard](https://github.com/AliDehbansiahkarbon/ChatGPTWizard) and [EasyDBMigrator](https://github.com/AliDehbansiahkarbon/EasyDBMigrator).
 
 <a href="https://www.buymeacoffee.com/adehbanr" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/default-orange.png" alt="Buy Me A Coffee" height="41" width="174"></a>
 
