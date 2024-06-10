@@ -24,15 +24,13 @@ uses
 type
   TOCWNewProjectWizard = class
   private
+    class var GlobalTempOpenAPIPathObjects: TObjectDictionary<string, TOpenAPIPath>;
     class procedure GetOpenAPIPathsObject(AExtractedOpenAPI: TFinalParsingObject);
     class procedure CreateMainUnit(AExtractedOpenAPI: TFinalParsingObject; const APersonality: string; AModuleServices: IOTAModuleServices; AProject: IOTAProject);
     class function CreateModelUnit(AExtractedOpenAPI: TFinalParsingObject; const APersonality: string; AModuleServices: IOTAModuleServices; AProject: IOTAProject): IOTAModule;
   public
     class procedure RegisterOCWProjectWizard(const APersonality: string);
   end;
-
-  var
-    GlobalTempOpenAPIPathObjects: TObjectDictionary<string, TOpenAPIPath>;
 
 implementation
 {$IFDEF CODESITE}
@@ -116,8 +114,11 @@ begin
 
         if Assigned(LvJsonPaths) then
         begin
-          for LvJsonPath in LvJsonPaths do
-            GlobalTempOpenAPIPathObjects.Add(LvJsonPath.JsonString.Value, TOpenAPIPath.CreateJson(LvJsonPath));
+          if LvJsonPaths.Count > 0 then
+          begin
+            for LvJsonPath in LvJsonPaths do
+              GlobalTempOpenAPIPathObjects.Add(LvJsonPath.JsonString.Value, TOpenAPIPath.CreateJson(LvJsonPath));
+          end;
         end;
       end;
 
@@ -210,57 +211,64 @@ begin
     begin
       TFinalParsingObject.Instance.Clear;
       LvWizardForm := TFrm_OCWNewProject.Create(nil);
+      GlobalTempOpenAPIPathObjects := TObjectDictionary<string, TOpenAPIPath>.Create;
       TSingletonSettingObj.Instance.RegisterFormClassForTheming(TFrm_OCWNewProject, LvWizardForm);
 
       if LvWizardForm.ShowModal = mrOk then
       begin
-        if not LvWizardForm.AddToProjectGroup then
-          (BorlandIDEServices as IOTAModuleServices).CloseAll;
-
-        LvModuleServices := (BorlandIDEServices as IOTAModuleServices);
-
-        // Create Project Source
-        LvProjectSourceCreator := TOCWProjectFile.Create(APersonality, 'OCWNewProject');
-        LvModuleServices.CreateModule(LvProjectSourceCreator);
-        LvProject := GetActiveProject;
-
-        LvConfig := (LvProject.ProjectOptions as IOTAProjectOptionsConfigurations).BaseConfiguration;
-        LvConfig.SetValue(sUnitSearchPath, '$(OCW)');
-        LvConfig.SetValue(sFramework, 'VCL');
-
-        //Create Main Unit
-        CreateMainUnit(LvWizardForm.ExtractedSpecification, APersonality, LvModuleServices, LvProject);
-
-        //Create RestClient Unit
-        LvRestClientCreator := TNewModelUnitEx.Create('RestClient', APersonality);
-        LvRestClientUnit := LvModuleServices.CreateModule(LvRestClientCreator);
-        if LvProject <> nil then
-          LvProject.AddFile(LvRestClientUnit.FileName, True);
-
-
-        // Create Model Units
-        if (Assigned(LvWizardForm.ExtractedSpecification.FinalJson)) or (Assigned(LvWizardForm.ExtractedSpecification.FinalYaml)) then
-          LvModelUnit := CreateModelUnit(LvWizardForm.ExtractedSpecification, APersonality, LvModuleServices, LvProject);
-
-        // Force to save project to be cimpile-able
-        if LvProject.Save(False, True) then
-        begin
-          LvRestClientUnit.Save(False, True);
-
-          if Assigned(LvModelUnit) then
-            LvModelUnit.Save(False, True);
-        end;
-
         try
-          LvWizardForm.Free;
-          TFinalParsingObject.Instance.Clear;
-        except
+          if not LvWizardForm.AddToProjectGroup then
+            (BorlandIDEServices as IOTAModuleServices).CloseAll;
+
+          LvModuleServices := (BorlandIDEServices as IOTAModuleServices);
+
+          // Create Project Source
+          LvProjectSourceCreator := TOCWProjectFile.Create(APersonality, 'OCWNewProject');
+          LvModuleServices.CreateModule(LvProjectSourceCreator);
+          LvProject := GetActiveProject;
+
+          LvConfig := (LvProject.ProjectOptions as IOTAProjectOptionsConfigurations).BaseConfiguration;
+          LvConfig.SetValue(sUnitSearchPath, '$(OCW)');
+          LvConfig.SetValue(sFramework, 'VCL');
+
+          //Create Main Unit
+          CreateMainUnit(LvWizardForm.ExtractedSpecification, APersonality, LvModuleServices, LvProject);
+
+          //Create RestClient Unit
+          LvRestClientCreator := TNewModelUnitEx.Create('RestClient', APersonality);
+          LvRestClientUnit := LvModuleServices.CreateModule(LvRestClientCreator);
+          if LvProject <> nil then
+            LvProject.AddFile(LvRestClientUnit.FileName, True);
+
+          // Create Model Units
+          if (Assigned(LvWizardForm.ExtractedSpecification.FinalJson)) or (Assigned(LvWizardForm.ExtractedSpecification.FinalYaml)) then
+            LvModelUnit := CreateModelUnit(LvWizardForm.ExtractedSpecification, APersonality, LvModuleServices, LvProject);
+
+          // Force to save project to be cimpile-able
+          if LvProject.Save(False, True) then
+          begin
+            LvRestClientUnit.Save(False, True);
+
+            if Assigned(LvModelUnit) then
+              LvModelUnit.Save(False, True);
+          end;
+        finally
+          try
+            LvWizardForm.Free;
+            if Assigned(GlobalTempOpenAPIPathObjects) then
+              GlobalTempOpenAPIPathObjects.Free;
+            TFinalParsingObject.Instance.Clear;
+          except
+          end;
         end;
       end
       else
       begin
         try
           LvWizardForm.Free;
+          if Assigned(GlobalTempOpenAPIPathObjects) then
+            GlobalTempOpenAPIPathObjects.Free;
+
           TFinalParsingObject.Instance.Clear;
         except on E: Exception do
         end;
@@ -271,11 +279,4 @@ begin
       Result := LoadIcon(HInstance, 'OCWProjectIcon');
     end, TArray<string>.Create(cWin32Platform, cWin64Platform), nil));
 end;
-
-initialization
-  GlobalTempOpenAPIPathObjects := TObjectDictionary<string, TOpenAPIPath>.Create;
-
-finalization
-  if Assigned(GlobalTempOpenAPIPathObjects) then
-    GlobalTempOpenAPIPathObjects.Free;
 end.

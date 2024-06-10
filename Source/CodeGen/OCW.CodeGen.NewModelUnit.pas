@@ -518,7 +518,7 @@ begin
   //12 DeleteMethod Implementations
 
   {$IFDEF CODESITE}
-    //CodeSite.Send('Result of the Source String Preparation= ' + Result);
+    CodeSite.Send('Result of the Source String Preparation= ' + Result);
   {$ENDIF}
 end;
 

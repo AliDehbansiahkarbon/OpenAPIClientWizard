@@ -116,7 +116,6 @@ var
   LvRequired: Boolean;
 begin
   FRequestBody := TRequestBody.Create;
-
   FMethodName := FindMethodName(AJsonMethod);
   FMethodType := GetEnumValueByName(AJsonMethod.JsonString.Value);
 
@@ -127,7 +126,6 @@ begin
     for I := 0 to Pred(FJsonParams.Count - 1) do
     begin
       LvParam := FJsonParams.Pairs[I];
-
       if LvParam.JsonString.Value.ToLower.Equals('requestbody') then
       begin
         if LvParam.JsonValue.TryGetValue<TJSONObject>(LvRequestBody) then
@@ -144,42 +142,57 @@ begin
 
             if Assigned(LvContent.FindValue('application/json')) then
             begin
-              LvApplicationNode := LvContent.GetValue('application/json') as TJSONObject;
-              FRequestBody.ContentType := 'application/json';
-              FRequestBody.Example := (LvApplicationNode.FindValue('schema') as TJSONObject).FindValue('example').Value;
-
-              LvProperties := (LvApplicationNode.FindValue('schema') as TJSONObject).FindValue('properties') as TJSONObject;
-              if Assigned(LvProperties) then
+              if LvContent.GetValue('application/json') is TJSONObject then
               begin
-                for j := 0 to LvProperties.Count - 1 do
+                LvApplicationNode := LvContent.GetValue('application/json') as TJSONObject;
+                FRequestBody.ContentType := 'application/json';
+
+                if Assigned(LvApplicationNode.FindValue('schema')) then
+                  if Assigned(LvApplicationNode.FindValue('schema').FindValue('example')) then
+                    FRequestBody.Example := LvApplicationNode.FindValue('schema').FindValue('example').Value;
+
+                if Assigned(LvApplicationNode.FindValue('schema').FindValue('properties')) then
                 begin
-                  LvProperty := LvProperties.Pairs[J];
-                  if Assigned(LvProperty) then
-                    FRequestBody.Properties.Add(LvProperty.JsonString.Value{prop name}, (LvProperty.JsonValue as TJSONObject).GetValue('type').Value{prop type});
+                  if LvApplicationNode.FindValue('schema').FindValue('properties') is TJSONObject then
+                  begin
+                    LvProperties := LvApplicationNode.FindValue('schema').FindValue('properties') as TJSONObject;
+                    if Assigned(LvProperties) then
+                    begin
+                      for j := 0 to LvProperties.Count - 1 do
+                      begin
+                          LvProperty := LvProperties.Pairs[J];
+                          if Assigned(LvProperty) then
+                            FRequestBody.Properties.Add(LvProperty.JsonString.Value{prop name}, (LvProperty.JsonValue as TJSONObject).GetValue('type').Value{prop type});
+                      end;
+                    end;
+                  end;
                 end;
               end;
             end;
 
             if Assigned(LvContent.FindValue('application/x-www-form-urlencoded')) then
             begin
-              LvApplicationNode := LvContent.FindValue('application/x-www-form-urlencoded') as TJSONObject;
-              FRequestBody.ContentType := 'application/x-www-form-urlencoded';
-
-              if Assigned(LvApplicationNode.FindValue('schema')) then
+              if LvContent.FindValue('application/x-www-form-urlencoded') is TJSONObject then
               begin
-                LvSchema := LvApplicationNode.GetValue('schema') as TJSONObject;
-                if Assigned(LvSchema.FindValue('example')) then
-                  FRequestBody.Example := LvSchema.FindValue('example').Value;
-              end;
+                LvApplicationNode := LvContent.FindValue('application/x-www-form-urlencoded') as TJSONObject;
+                FRequestBody.ContentType := 'application/x-www-form-urlencoded';
 
-              if Assigned(LvSchema.FindValue('properties')) then
-              begin
-                LvProperties := LvSchema.FindValue('properties') as TJSONObject;
-                for j := 0 to Pred(LvProperties.Count) do
+                if Assigned(LvApplicationNode.FindValue('schema')) then
                 begin
-                  LvProperty := LvProperties.Pairs[J];
-                  if Assigned(LvProperty) then
-                    FRequestBody.Properties.Add(LvProperty.JsonString.Value{prop name}, (LvProperty.JsonValue as TJSONObject).GetValue('type').Value{prop type});
+                  LvSchema := LvApplicationNode.GetValue('schema') as TJSONObject;
+                  if Assigned(LvSchema.FindValue('example')) then
+                    FRequestBody.Example := LvSchema.FindValue('example').Value;
+                end;
+
+                if Assigned(LvSchema.FindValue('properties')) then
+                begin
+                  LvProperties := LvSchema.FindValue('properties') as TJSONObject;
+                  for j := 0 to Pred(LvProperties.Count) do
+                  begin
+                    LvProperty := LvProperties.Pairs[J];
+                    if Assigned(LvProperty) then
+                      FRequestBody.Properties.Add(LvProperty.JsonString.Value{prop name}, (LvProperty.JsonValue as TJSONObject).GetValue('type').Value{prop type});
+                  end;
                 end;
               end;
             end;
@@ -225,7 +238,6 @@ begin
 
                   if Assigned(FindValue('required')) then
                     LvRequired := GetValue('required').AsType<Boolean>;
-
 
                   LvParameter := TParameter.Create(LvName, LvIn, LvDescription, LvType, LvRequired);
                 except on E: Exception do
@@ -547,7 +559,7 @@ begin
   if IndexStr(Result.ToLower, ['string', 'integer', 'boolean', 'number', 'float', 'array', 'object']) = -1 then
   begin
   {$IFDEF CODESITE}
-    CodeSite.Send('Data type cannot be realized: the "' + Result + '" Changed to Variant');
+    //CodeSite.Send('Data type cannot be realized: the "' + Result + '" Changed to Variant');
   {$ENDIF}
     Result := 'variant';
   end;
@@ -555,7 +567,7 @@ begin
   if Result.Trim = '' then
   begin
   {$IFDEF CODESITE}
-    CodeSite.Send('Empty DataType Changed to Variant!');
+    //CodeSite.Send('Empty DataType Changed to Variant!');
   {$ENDIF}
     Result := 'variant';
   end;

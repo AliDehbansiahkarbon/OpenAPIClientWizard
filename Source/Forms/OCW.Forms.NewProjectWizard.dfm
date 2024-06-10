@@ -13,10 +13,12 @@ object Frm_OCWNewProject: TFrm_OCWNewProject
   Font.Name = 'Segoe UI'
   Font.Style = []
   KeyPreview = True
+  OldCreateOrder = True
   Position = poOwnerFormCenter
   OnCreate = FormCreate
   OnDestroy = FormDestroy
   OnKeyDown = FormKeyDown
+  PixelsPerInch = 96
   TextHeight = 15
   object pnl_Main: TPanel
     Left = 0

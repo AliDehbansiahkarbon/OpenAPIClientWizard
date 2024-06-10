@@ -245,8 +245,11 @@ end;
 
 procedure TFrm_OCWNewProject.FormDestroy(Sender: TObject);
 begin
-  if Assigned(FExtractedSpec.Instance) then
-    FExtractedSpec.Instance.Free;
+  try
+    if Assigned(FExtractedSpec.Instance) then
+      FExtractedSpec.Instance.Free;
+  except
+  end;
 end;
 
 procedure TFrm_OCWNewProject.FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
