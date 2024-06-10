@@ -1,0 +1,66 @@
+
+package OpenAPIClientWizard;
+
+
+{$R *.res}
+{$R *.dres}
+{$IFDEF IMPLICITBUILDING This IFDEF should not be used by users}
+{$ALIGN 8}
+{$ASSERTIONS ON}
+{$BOOLEVAL OFF}
+{$DEBUGINFO OFF}
+{$EXTENDEDSYNTAX ON}
+{$IMPORTEDDATA ON}
+{$IOCHECKS ON}
+{$LOCALSYMBOLS ON}
+{$LONGSTRINGS ON}
+{$OPENSTRINGS ON}
+{$OPTIMIZATION OFF}
+{$OVERFLOWCHECKS ON}
+{$RANGECHECKS ON}
+{$REFERENCEINFO ON}
+{$SAFEDIVIDE OFF}
+{$STACKFRAMES ON}
+{$TYPEDADDRESS OFF}
+{$VARSTRINGCHECKS ON}
+{$WRITEABLECONST OFF}
+{$MINENUMSIZE 1}
+{$IMAGEBASE $400000}
+{$DEFINE DEBUG}
+{$DEFINE CODESITE}
+{$ENDIF IMPLICITBUILDING}
+{$IMPLICITBUILD ON}
+
+requires
+  rtl,
+  designide,
+  ExpertsCreators,
+  RESTComponents,
+  vclwinx,
+  IndySystem,
+  IndyCore;
+
+contains
+  OCW.ProjectWizardEx in 'Source\Wizard\OCW.ProjectWizardEx.pas',
+  OCW.Forms.NewProjectWizard in 'Source\Forms\OCW.Forms.NewProjectWizard.pas' {Frm_OCWNewProject},
+  OCW.CodeGen.NewOCWProject in 'Source\CodeGen\OCW.CodeGen.NewOCWProject.pas',
+  OCW.CodeGen.NewProject in 'Source\CodeGen\OCW.CodeGen.NewProject.pas',
+  OCW.CodeGen.SourceFile in 'Source\CodeGen\OCW.CodeGen.SourceFile.pas',
+  OCW.CodeGen.Templates in 'Source\CodeGen\OCW.CodeGen.Templates.pas',
+  OCW.CodeGen.NewModelUnit in 'Source\CodeGen\OCW.CodeGen.NewModelUnit.pas',
+  OCW.CodeGen.NewUnit in 'Source\CodeGen\OCW.CodeGen.NewUnit.pas',
+  OCW.Registration in 'Source\Wizard\OCW.Registration.pas',
+  OCW.Splash.Registration in 'Source\Wizard\OCW.Splash.Registration.pas',
+  OCW.Util.Rest in 'Source\Utils\OCW.Util.Rest.pas',
+  OCW.Util.OpenAPIHelper in 'Source\Utils\OCW.Util.OpenAPIHelper.pas',
+  OCW.Util.Setting in 'Source\Utils\OCW.Util.Setting.pas',
+  OCW.Forms.About in 'Source\Forms\OCW.Forms.About.pas' {Frm_About},
+  OCW.Util.Core in 'Source\Utils\OCW.Util.Core.pas',
+  OCW.Util.PostmanHelper in 'Source\Utils\OCW.Util.PostmanHelper.pas',
+  Neslib.Utf8 in 'Source\ThrdParty\Neslib.Yaml\Neslib\Neslib.Utf8.pas',
+  Neslib.Hash in 'Source\ThrdParty\Neslib.Yaml\Neslib\Neslib.Hash.pas',
+  Neslib.SysUtils in 'Source\ThrdParty\Neslib.Yaml\Neslib\Neslib.SysUtils.pas',
+  Neslib.LibYaml in 'Source\ThrdParty\Neslib.Yaml\Neslib.LibYaml.pas',
+  Neslib.Yaml in 'Source\ThrdParty\Neslib.Yaml\Neslib.Yaml.pas';
+
+end.
