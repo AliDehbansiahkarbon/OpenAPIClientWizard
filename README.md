@@ -37,7 +37,14 @@ As Delphi developers, we often face the challenge of implementing REST API clien
 ![image](https://github.com/AliDehbansiahkarbon/OpenAPIClientWizard/assets/5601608/f0dfeae7-5d1a-49b6-b970-47e25d3b3944)
 
 4. **Setup the project's preferences**
-5. **Generate Your Project:** Provide your Swagger or OpenAPI specification, or Postman collection, and let the plugin do the rest.
+
+
+   ![image](https://github.com/AliDehbansiahkarbon/OpenAPIClientWizard/assets/5601608/f1b646fa-7607-4ce5-b36d-bed8df9344a3)
+
+6. **Generate Your Project:** Provide your Swagger or OpenAPI specification, or Postman collection, and let the plugin do the rest.
+
+![image](https://github.com/AliDehbansiahkarbon/OpenAPIClientWizard/assets/5601608/49ba1e0d-8b4a-4f08-89a8-85db0bcff9bf)
+
 
 
 ## Demo Video(coming soon)
