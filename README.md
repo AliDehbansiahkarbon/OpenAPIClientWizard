@@ -47,8 +47,10 @@ As Delphi developers, we often face the challenge of implementing REST API clien
 
 
 
-## Demo Video(coming soon)
-**Watch a short video:** to learn how to use the plug-in
+## Demo Video
+**Watch a short video [here](https://youtu.be/7B7nSHIsV64):** to learn how to use the plug-in or click on the below image👇👇)
+
+<a href="https://youtu.be/7B7nSHIsV64" target="_blank"><img src="https://i9.ytimg.com/vi/7B7nSHIsV64/mqdefault.jpg?v=6668a897&sqp=COzborMG&rs=AOn4CLAblYLaeHAczYwPc-FqXpYI3Fj-2Q" width = "600" height = "300" /></a>
 
 
 ## Support
