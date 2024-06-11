@@ -63,7 +63,7 @@ resourcestring
     '    FMaximumWidth: Integer;' + sLineBreak +
     '    procedure AddGridPanel;' + sLineBreak +
     '    procedure AddButton(ACaption: string; AProc: TNotifyEvent);' + sLineBreak +
-    '    procedure CreateObjects;' + sLineBreak +
+    '    procedure CreateUIObjects;' + sLineBreak +
     '  public' + sLineBreak +
     '    { Public declarations }' + sLineBreak +
     '  end;' + sLineBreak +
@@ -78,7 +78,7 @@ resourcestring
     'procedure TFrm_Main.Timer1Timer(Sender: TObject);' + sLineBreak +
     'begin' + sLineBreak +
     '  TTimer(Sender).Enabled := False;' + sLineBreak +
-    '  CreateObjects;' + sLineBreak +
+    '  CreateUIObjects;' + sLineBreak +
     'end;' + sLineBreak +
     sLineBreak +
     'procedure TFrm_Main.AddButton(ACaption: string; AProc: TNotifyEvent);' + sLineBreak +
@@ -136,7 +136,7 @@ resourcestring
     ' %2:s' + sLineBreak +
     '//=========================================' +
     sLineBreak +
-    'procedure TFrm_Main.CreateObjects;' + sLineBreak +
+    'procedure TFrm_Main.CreateUIObjects;' + sLineBreak +
     'var' + sLineBreak +
     '  I: Integer;' + sLineBreak +
     'begin' + sLineBreak +
@@ -531,7 +531,7 @@ resourcestring
     'end.';
 
     // 0: Button Name
-    // 1: Method calling line
+    // 1: Method's calling line
     sButtonOnClickEvent =
     'procedure TFrm_Main.%0:sClick(Sender: TObject);' + sLineBreak +
     'var' + sLineBreak +

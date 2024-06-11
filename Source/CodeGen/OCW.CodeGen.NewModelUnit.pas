@@ -30,6 +30,7 @@ type
     function AddCastings(AParam: TParameter): string;
     function ConvertAuthenticationType(AAuthType: Byte): string;
     function AddBreaklines(const AText: string; ADelimitter: Char; ABreakLength: Integer = 1000): string;
+//    function GenerateRequestClass(const AJSONString: string): string;
   protected
     FIsMainUnit: Boolean;
     FModelClassName: string;
@@ -105,6 +106,70 @@ begin
 
   FOpenAPIPaths:= AOpenAPIPaths;
 end;
+
+//function TNewModelUnitEx.GenerateRequestClass(const AJSONString: string): string;
+//var
+//  LvJSONValue: TJSONValue;
+//  LvJSONObject: TJSONObject;
+//  LvModelValue, PromptValue: string;
+//  LvClassDef: TStringBuilder;
+//begin
+//  LvJSONValue := nil;
+//  Result := '';
+//  try
+//    LvJSONValue := TJSONObject.ParseJSONValue(AJSONString);
+//  except on E: Exception do
+//  {$IFDEF CODESITE}
+//    CodeSite.Send('Cannot generate class for : '+ AJSONString + #13 + 'Error: ' + E.Message);
+//  {$ENDIF}
+//  end;
+//
+//  if not Assigned(LvJSONValue) then
+//    Exit;
+//
+//  try
+//    if LvJSONValue is TJSONObject then
+//    begin
+//      LvJSONObject := TJSONObject(LvJSONValue);
+//
+//      // Extract values from JSON
+//      LvModelValue := LvJSONObject.GetValue<string>('model');
+//      PromptValue := LvJSONObject.GetValue<string>('prompt');
+//
+//      // Create class definition
+//      LvClassDef := TStringBuilder.Create;
+//      try
+//        LvClassDef.AppendLine('type')
+//                .AppendLine('  TGeneratedClass = class')
+//                .AppendLine('  private')
+//                .AppendLine('    FModel: string;')
+//                .AppendLine('    FPrompt: string;')
+//                .AppendLine('  public')
+//                .AppendLine('    constructor Create(const AModel, APrompt: string);')
+//                .AppendLine('    property Model: string read FModel;')
+//                .AppendLine('    property Prompt: string read FPrompt;')
+//                .AppendLine('  end;')
+//                .AppendLine
+//                .AppendLine('{ TGeneratedClass }')
+//                .AppendLine
+//                .AppendLine('constructor TGeneratedClass.Create(const AModel, APrompt: string);')
+//                .AppendLine('begin')
+//                .AppendLine('  FModel := AModel;')
+//                .AppendLine('  FPrompt := APrompt;')
+//                .AppendLine('end;');
+//
+//        Result := LvClassDef.ToString;
+//      finally
+//        LvClassDef.Free;
+//      end;
+//    end
+//    else
+//      raise Exception.Create('Invalid JSON format');
+//  finally
+//    LvJSONValue.Free;
+//  end;
+//
+//end;
 
 function TNewModelUnitEx.GetPrefix(AMethodType: TMethodType): string;
 begin
@@ -195,7 +260,7 @@ begin
   LvFullParamList := LvInPathParams + IfThen((LvInPathParams.Trim.IsEmpty or LvQueryParams.Trim.IsEmpty), EmptyStr, ' + ') +  LvQueryParams;
   LvFullParamList := IfThen(LvFullParamList.Trim.IsEmpty, EmptyStr, Concat(' + ', LvFullParamList.TrimRight));
 
-  if AMethodObj.RequestBody.Properties.Count > 0 then
+  if (AMethodObj.RequestBody.Properties.Count > 0) or (not AMethodObj.RequestBody.Example.IsEmpty) then
     LvRequestObjectSection := 'LvStruct.RequestObject := ARequestObj;' + sLineBreak;
 
   case AMethodObj.MethodType of
@@ -281,6 +346,7 @@ var
   LvBtnDefinitionLines: string;
   LvButtonsCreationLines: string;
   LvParamSampleaValueFinalList: string;
+  LvRequestClasses: string;
 begin
   Result := sMainUnit;
   LvBtnName := EmptyStr;
@@ -289,6 +355,7 @@ begin
   LvBtnDefinitionLines := EmptyStr;
   LvButtonsCreationLines := EmptyStr;
   LvParamSampleaValueFinalList := EmptyStr;
+  LvRequestClasses := EmptyStr;
 
   for LvKey in FOpenAPIPaths.Keys do
   begin
@@ -332,9 +399,18 @@ begin
             end;
           end;
 
+          if (not LvMethod.RequestBody.Example.IsEmpty) and (TFinalParsingObject.Instance.FinalObjectType = atPostManCollection) then
+          begin
+            //LvRequestClasses := LvRequestClasses + IfThen(LvRequestClasses.IsEmpty, '', sLineBreak) + GenerateRequestClass(LvMethod.RequestBody.Example);
+            if LvParamSampleaValueFinalList.IsEmpty then
+              LvParamSampleaValueFinalList := 'TObject.Create{Create/pass you real request object here}'
+            else
+              LvParamSampleaValueFinalList := LvParamSampleaValueFinalList + ',TObject.Create{Create/pass you real request object here}';
+          end;
+
           LvBtnDefinitionLines := LvBtnDefinitionLines + sLineBreak + Format('    procedure %0:sClick(Sender: TObject);', ['Btn_' + LvBtnName]);
           LvTempStr:= GetPrefix(LvMethod.MethodType) + LvBtnName + GetSuffix(LvMethod.MethodType) + '(' + LvParamSampleaValueFinalList + ')';
-          LvBtnCallLines := LvBtnCallLines + sLineBreak + Format(sButtonOnClickEvent, ['Btn_' + LvBtnName, LvTempStr ]);
+          LvBtnCallLines := LvBtnCallLines + sLineBreak + Format(sButtonOnClickEvent, ['Btn_' + LvBtnName, LvTempStr]);
           LvButtonsCreationLines := LvButtonsCreationLines + '  AddButton(' +  QuotedStr('Btn_' + LvBtnName) + ', ' + 'Btn_' + LvBtnName + 'Click);' + sLineBreak;
         end;
       end;
@@ -413,7 +489,6 @@ begin
         end;
 
         RefineParameterList(LvParamFinalList);
-
         if Assigned(LvMethod.RequestBody) then
         begin
           if Assigned(LvMethod.RequestBody.Properties) then
@@ -424,8 +499,17 @@ begin
                 LvParamFinalList := Concat('(', LvParamFinalList, '; ARequestObj: TObject = nil', ')')
               else
                 LvParamFinalList := '(ARequestObj: TObject = nil)';
-            end else if not LvParamFinalList.IsEmpty then
+            end
+            else if not LvParamFinalList.IsEmpty then
               LvParamFinalList := Concat('(', LvParamFinalList, ')');
+          end;
+
+          if (not LvMethod.RequestBody.Example.IsEmpty) and (not LvParamFinalList.Contains('ARequestObj: TObject')) then
+          begin
+            if not LvParamFinalList.IsEmpty then
+              LvParamFinalList := Concat('(', LvParamFinalList, '; ARequestObj: TObject = nil', ')')
+            else
+              LvParamFinalList := '(ARequestObj: TObject = nil)';
           end;
         end;
 
@@ -445,7 +529,6 @@ begin
 
           mtPost:
           begin
-
             LvAllPostfunctionHeaders :=
                                     LvAllPostfunctionHeaders + sLineBreak + '    ' +
                                     Format(sFunctionHeader, [GetPrefix(mtPost) + LvMethod._MethodName + GetSuffix(mtPost), LvParamFinalList]);
@@ -518,7 +601,7 @@ begin
   //12 DeleteMethod Implementations
 
   {$IFDEF CODESITE}
-    CodeSite.Send('Result of the Source String Preparation= ' + Result);
+    //CodeSite.Send('Result of the Source String Preparation= ' + Result);
   {$ENDIF}
 end;
 

@@ -449,6 +449,7 @@ begin
         end;
       end;
     end;
+    FRequestBody.FExample := APostmanItem.Request.Body.Raw;
   end;
 end;
 
