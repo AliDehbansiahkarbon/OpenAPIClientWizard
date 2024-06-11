@@ -151,13 +151,13 @@
             <ResourceType>ICON</ResourceType>
             <ResourceId>OCWProjectIcon</ResourceId>
         </RcItem>
-        <RcItem Include="Resource\SplashScreen.bmp">
-            <ResourceType>BITMAP</ResourceType>
-            <ResourceId>OCWSplashIcon</ResourceId>
-        </RcItem>
         <RcItem Include="Resource\OCWLogo.png">
             <ResourceType>RCDATA</ResourceType>
             <ResourceId>OCWLogo</ResourceId>
+        </RcItem>
+        <RcItem Include="Resource\SPLASH.bmp">
+            <ResourceType>BITMAP</ResourceType>
+            <ResourceId>SPLASH</ResourceId>
         </RcItem>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
@@ -194,6 +194,12 @@
                 <DeployFile LocalName="$(BDS)\Redist\osx32\libcgunwind.1.0.dylib" Class="DependencyModule"/>
                 <DeployFile LocalName="C:\Users\Public\Documents\Embarcadero\Studio\19.0\Bpl\OpenAPIClientWizard.bpl" Configuration="Debug" Class="ProjectOutput"/>
                 <DeployFile LocalName="C:\Users\Public\Documents\Embarcadero\Studio\23.0\Bpl\OpenAPIClientWizard.bpl" Configuration="Debug" Class="ProjectOutput"/>
+                <DeployFile LocalName="C:\Users\Public\Documents\Embarcadero\Studio\23.0\Bpl\OpenAPIClientWizard.bpl" Configuration="Release" Class="ProjectOutput">
+                    <Platform Name="Win32">
+                        <RemoteName>OpenAPIClientWizard.bpl</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
                 <DeployClass Name="AdditionalDebugSymbols">
                     <Platform Name="OSX32">
                         <Operation>1</Operation>

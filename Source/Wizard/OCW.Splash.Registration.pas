@@ -29,7 +29,7 @@ resourcestring
 
 initialization
 
-bmSplashScreen := LoadBitmap(hInstance, 'OCWSplashIcon');
+bmSplashScreen := LoadBitmap(hInstance, 'SPLASH');
 (SplashScreenServices as IOTASplashScreenServices).AddPluginBitmap(resPackageName, bmSplashScreen, False, resLicense);
 
 end.
