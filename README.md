@@ -10,12 +10,16 @@ As Delphi developers, we often face the challenge of implementing REST API clien
 
 **OpenAPIClientWizard** changes all that. This powerful plugin reads Swagger, OpenAPI specifications, or Postman collection and generates a fully implemented client-side ample(VCL) project in Delphi, ready to compile, in just 2-3 seconds!
 
+## IDE Version support
+- **Supports from Delphi 10.1 Berlin to 12.x Athens**
+
 ## Features
 
 - **Supports Swagger Specifications:** Handles JSON format effortlessly.
 - **Supports OpenAPI Specifications:** Handles both JSON and YAML formats effortlessly.
 - **Postman Collection Conversion:** Converts Postman collections into complete Delphi client projects.
 - **Rapid Project Generation:** Generates fully implemented client-side projects in seconds, saving you a huge time(weeks of development).
+
 
 ## Benefits
 
