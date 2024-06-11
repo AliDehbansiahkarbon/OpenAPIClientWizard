@@ -31,7 +31,14 @@ As Delphi developers, we often face the challenge of implementing REST API clien
 
 1. **Download and Install:** Follow the installation instructions in the repository.
 2. **Run OpenAPIClientWizard:** Open your RAD Studio IDE and run the plugin.
-3. **Generate Your Project:** Provide your Swagger or OpenAPI specification, or Postman collection, and let the plugin do the rest.
+3. **Create a new project** in RAD Studio by following this path: File/New/Other:
+
+
+![image](https://github.com/AliDehbansiahkarbon/OpenAPIClientWizard/assets/5601608/f0dfeae7-5d1a-49b6-b970-47e25d3b3944)
+
+4. **Setup the project's preferences**
+5. **Generate Your Project:** Provide your Swagger or OpenAPI specification, or Postman collection, and let the plugin do the rest.
+
 
 ## Demo Video(coming soon)
 **Watch a short video:** to learn how to use the plug-in
