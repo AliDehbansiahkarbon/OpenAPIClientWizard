@@ -1,6 +1,6 @@
 <img width="200" height="200" src="https://github.com/AliDehbansiahkarbon/OpenAPIClientWizard/assets/5601608/9eab0937-90e4-46ae-bce2-29a24c02bd9d" alt=""/> 
 
-# OpenAPIClientWizard(beta)
+# OpenAPIClientWizard(beta- no production ready)
 
 Welcome to **OpenAPIClientWizard** – the ultimate plugin for RAD Studio that revolutionizes the way Delphi developers implement REST API clients.
 
@@ -10,12 +10,16 @@ As Delphi developers, we often face the challenge of implementing REST API clien
 
 **OpenAPIClientWizard** changes all that. This powerful plugin reads Swagger, OpenAPI specifications, or Postman collection and generates a fully implemented client-side ample(VCL) project in Delphi, ready to compile, in just 2-3 seconds!
 
+## IDE Version support
+- **Supports from Delphi 10.1 Berlin to 12.x Athens**
+
 ## Features
 
 - **Supports Swagger Specifications:** Handles JSON format effortlessly.
 - **Supports OpenAPI Specifications:** Handles both JSON and YAML formats effortlessly.
 - **Postman Collection Conversion:** Converts Postman collections into complete Delphi client projects.
 - **Rapid Project Generation:** Generates fully implemented client-side projects in seconds, saving you a huge time(weeks of development).
+
 
 ## Benefits
 
@@ -27,11 +31,26 @@ As Delphi developers, we often face the challenge of implementing REST API clien
 
 1. **Download and Install:** Follow the installation instructions in the repository.
 2. **Run OpenAPIClientWizard:** Open your RAD Studio IDE and run the plugin.
-3. **Generate Your Project:** Provide your Swagger or OpenAPI specification, or Postman collection, and let the plugin do the rest.
+3. **Create a new project** in RAD Studio by following this path: File/New/Other:
 
-## Demo Video(coming soon)
-**Watch a short video:** to learn how to use the plug-in
 
+![image](https://github.com/AliDehbansiahkarbon/OpenAPIClientWizard/assets/5601608/f0dfeae7-5d1a-49b6-b970-47e25d3b3944)
+
+4. **Setup the project's preferences**
+
+
+   ![image](https://github.com/AliDehbansiahkarbon/OpenAPIClientWizard/assets/5601608/f1b646fa-7607-4ce5-b36d-bed8df9344a3)
+
+6. **Generate Your Project:** Provide your Swagger or OpenAPI specification, or Postman collection, and let the plugin do the rest.
+
+![image](https://github.com/AliDehbansiahkarbon/OpenAPIClientWizard/assets/5601608/49ba1e0d-8b4a-4f08-89a8-85db0bcff9bf)
+
+
+
+## Demo Video
+**Watch a short video [here](https://youtu.be/7B7nSHIsV64):** to learn how to use the plug-in or click on the below image👇👇)
+
+<a href="https://youtu.be/7B7nSHIsV64" target="_blank"><img src="https://github.com/AliDehbansiahkarbon/OpenAPIClientWizard/assets/5601608/9015ca43-3d3a-4dfa-8436-1bbba7ac6fdd" width = "300" height = "300" /></a>
 
 ## Support
 
