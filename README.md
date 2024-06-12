@@ -1,6 +1,6 @@
 <img width="200" height="200" src="https://github.com/AliDehbansiahkarbon/OpenAPIClientWizard/assets/5601608/9eab0937-90e4-46ae-bce2-29a24c02bd9d" alt=""/> 
 
-# OpenAPIClientWizard(beta)
+# OpenAPIClientWizard(beta- no production ready)
 
 Welcome to **OpenAPIClientWizard** – the ultimate plugin for RAD Studio that revolutionizes the way Delphi developers implement REST API clients.
 
