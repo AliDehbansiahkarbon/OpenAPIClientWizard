@@ -96,6 +96,8 @@
         <DCC_RemoteDebug>true</DCC_RemoteDebug>
         <DCC_IntegerOverflowCheck>true</DCC_IntegerOverflowCheck>
         <DCC_RangeChecking>true</DCC_RangeChecking>
+        <VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
+        <VerInfo_Keys>CompanyName=;FileDescription=$(MSBuildProjectName)$(Auto);FileVersion=1.0.0.0;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProgramID=com.embarcadero.$(MSBuildProjectName)$(Auto);ProductName=$(MSBuildProjectName)$(Auto);ProductVersion=1.0.0.0;Comments=</VerInfo_Keys>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_1_Win32)'!=''">
         <DCC_RemoteDebug>false</DCC_RemoteDebug>
@@ -120,8 +122,6 @@
         <DCCReference Include="ExpertsCreators.dcp"/>
         <DCCReference Include="RESTComponents.dcp"/>
         <DCCReference Include="vclwinx.dcp"/>
-        <DCCReference Include="IndySystem.dcp"/>
-        <DCCReference Include="IndyCore.dcp"/>
         <DCCReference Include="Source\Wizard\OCW.ProjectWizardEx.pas"/>
         <DCCReference Include="Source\Forms\OCW.Forms.NewProjectWizard.pas">
             <Form>Frm_OCWNewProject</Form>
