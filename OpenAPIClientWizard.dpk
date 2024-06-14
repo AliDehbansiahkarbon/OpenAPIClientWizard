@@ -29,6 +29,7 @@ package OpenAPIClientWizard;
 {$DEFINE RELEASE}
 {$ENDIF IMPLICITBUILDING}
 {$IMPLICITBUILD ON}
+{$DESIGNONLY}
 
 requires
   rtl,
