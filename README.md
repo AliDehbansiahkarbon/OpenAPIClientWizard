@@ -23,7 +23,7 @@ As Delphi developers, we often face the challenge of implementing REST API clien
 
 ## Benefits
 
-- **Save Time:** Reduce weeks of work to mere seconds.
+- **Save Time:** Reduces weeks of work to mere seconds.
 - **Increase Productivity:** Focus on building amazing applications instead of spending time on repetitive coding tasks.
 - **Simplify Development:** Automate the creation of Delphi client-side projects from API specifications.
 
