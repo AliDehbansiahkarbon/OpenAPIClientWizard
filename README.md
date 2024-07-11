@@ -48,7 +48,7 @@ As Delphi developers, we often face the challenge of implementing REST API clien
 
 
 ## Demo Video
-**Watch a short video [here](https://youtu.be/7B7nSHIsV64):** to learn how to use the plug-in or click on the below image👇👇)
+**Watch a short video [here](https://youtu.be/7B7nSHIsV64):** to learn how to use the plug-in (or click on the below image👇👇)
 
 <a href="https://youtu.be/7B7nSHIsV64" target="_blank"><img src="https://github.com/AliDehbansiahkarbon/OpenAPIClientWizard/assets/5601608/9015ca43-3d3a-4dfa-8436-1bbba7ac6fdd" width = "300" height = "300" /></a>
 
