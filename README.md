@@ -8,7 +8,7 @@ Welcome to **OpenAPIClientWizard** – the ultimate plugin for RAD Studio that r
 
 As Delphi developers, we often face the challenge of implementing REST API clients. API documentation rarely includes Delphi code snippets, forcing us to read the documentation and implement each method - GET, POST, PUT, DELETE - manually. Even with Swagger or OpenAPI specifications, it's a time-consuming process. Without these specifications, we resort to tools like Delphi's REST Debugger or Postman, testing each method individually before coding them into our projects.
 
-**OpenAPIClientWizard** changes all that. This powerful plugin reads Swagger, OpenAPI specifications, or Postman collection and generates a fully implemented client-side ample(VCL) project in Delphi, ready to compile, in just 2-3 seconds!
+**OpenAPIClientWizard** changes all that. This powerful plugin reads Swagger, OpenAPI specifications, or Postman collection and generates a fully implemented client-side sample(VCL) project in Delphi, ready to compile, in just 2-3 seconds!
 
 ## IDE Version support
 - **Supports from Delphi 10.1 Berlin to 12.x Athens**
