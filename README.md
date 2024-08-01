@@ -8,7 +8,7 @@ Welcome to **OpenAPIClientWizard** – the ultimate plugin for RAD Studio that r
 
 As Delphi developers, we often face the challenge of implementing REST API clients. API documentation rarely includes Delphi code snippets, forcing us to read the documentation and implement each method - GET, POST, PUT, DELETE - manually. Even with Swagger or OpenAPI specifications, it's a time-consuming process. Without these specifications, we resort to tools like Delphi's REST Debugger or Postman, testing each method individually before coding them into our projects.
 
-**OpenAPIClientWizard** changes all that. This powerful plugin reads Swagger, OpenAPI specifications, or Postman collection and generates a fully implemented client-side ample(VCL) project in Delphi, ready to compile, in just 2-3 seconds!
+**OpenAPIClientWizard** changes all that. This powerful plugin reads Swagger, OpenAPI specifications, or Postman collection and generates a fully implemented client-side sample(VCL) project in Delphi, ready to compile, in just 2-3 seconds!
 
 ## IDE Version support
 - **Supports from Delphi 10.1 Berlin to 12.x Athens**
@@ -23,7 +23,7 @@ As Delphi developers, we often face the challenge of implementing REST API clien
 
 ## Benefits
 
-- **Save Time:** Reduce weeks of work to mere seconds.
+- **Save Time:** Reduces weeks of work to mere seconds.
 - **Increase Productivity:** Focus on building amazing applications instead of spending time on repetitive coding tasks.
 - **Simplify Development:** Automate the creation of Delphi client-side projects from API specifications.
 
@@ -48,7 +48,7 @@ As Delphi developers, we often face the challenge of implementing REST API clien
 
 
 ## Demo Video
-**Watch a short video [here](https://youtu.be/7B7nSHIsV64):** to learn how to use the plug-in or click on the below image👇👇)
+**Watch a short video [here](https://youtu.be/7B7nSHIsV64):** to learn how to use the plug-in (or click on the below image👇👇)
 
 <a href="https://youtu.be/7B7nSHIsV64" target="_blank"><img src="https://github.com/AliDehbansiahkarbon/OpenAPIClientWizard/assets/5601608/9015ca43-3d3a-4dfa-8436-1bbba7ac6fdd" width = "300" height = "300" /></a>
 
