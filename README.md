@@ -39,12 +39,22 @@ As Delphi developers, we often face the challenge of implementing REST API clien
 4. **Setup the project's preferences**
 
 
-   ![image](https://github.com/AliDehbansiahkarbon/OpenAPIClientWizard/assets/5601608/f1b646fa-7607-4ce5-b36d-bed8df9344a3)
+![image](https://github.com/user-attachments/assets/8b8d1c3b-a54b-4378-aaad-802852eb74b0)
 
+   
 6. **Generate Your Project:** Provide your Swagger or OpenAPI specification, or Postman collection, and let the plugin do the rest.
 
 ![image](https://github.com/AliDehbansiahkarbon/OpenAPIClientWizard/assets/5601608/49ba1e0d-8b4a-4f08-89a8-85db0bcff9bf)
 
+
+
+## Remarks
+**To download, you must provide the direct URL of the file; redirection is not supported.**
+**You cannot use the first URL to download the JSON specification, but the second one is acceptable.**
+
+1- https://github.com/adewg/ICAR/blob/ADE-1/url-schemes/reproductionURLScheme.json ❌
+
+2- https://raw.githubusercontent.com/adewg/ICAR/ADE-1/url-schemes/reproductionURLScheme.json ✅
 
 
 ## Demo Video
