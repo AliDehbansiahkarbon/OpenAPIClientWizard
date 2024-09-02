@@ -8,9 +8,10 @@ unit OCW.Forms.NewProjectWizard;
 interface
 
 uses
-  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
-  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, System.Generics.Collections, System.JSON,
-  Vcl.WinXCtrls, Vcl.Buttons, DockForm, Neslib.Yaml, System.Rtti,
+  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes,
+  Vcl.Graphics, Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, System.Generics.Collections,
+  System.JSON, Vcl.WinXCtrls, Vcl.Buttons, DockForm, Neslib.Yaml, System.Rtti,
+  System.Net.HttpClientComponent, System.IOUtils,
 
   OCW.Util.Core,
   OCW.Util.Rest,
@@ -26,36 +27,26 @@ type
     grpDoc: TGroupBox;
     edt_DocURL: TEdit;
     edt_SpecFile: TEdit;
-    rb_API_URL: TRadioButton;
+    rb_Download_URL: TRadioButton;
     rb_SelectFile: TRadioButton;
     lbl_Title: TLabel;
     Label4: TLabel;
     cbb_Version: TComboBox;
-    grpAuthorization: TGroupBox;
-    cbbAuth: TComboBox;
-    lblAuth: TLabel;
-    lblUsername: TLabel;
-    edt_Username: TEdit;
-    edt_Password: TEdit;
-    lblPassword: TLabel;
-    lblBearerToken: TLabel;
-    edt_BearerToken: TEdit;
     grpOtherOptions: TGroupBox;
     Label2: TLabel;
     cbb_BooleanStringForm: TComboBox;
     btnAbout: TSpeedButton;
     lbl_Validation: TLabel;
     chk_AddToProjectGroup: TCheckBox;
-    Label6: TLabel;
     edt_BaseURL: TEdit;
     Btn_OpenFile: TButton;
     FOD: TFileOpenDialog;
     cbb_Prefix: TComboBox;
     lbl_prefix: TLabel;
     pnl_Main: TPanel;
+    rb_GetBaseURL: TRadioButton;
     procedure Btn_CreateClick(Sender: TObject);
     procedure FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
-    procedure cbbAuthChange(Sender: TObject);
     procedure btnAboutClick(Sender: TObject);
     procedure Btn_OpenFileClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
@@ -66,6 +57,7 @@ type
     FLastPath: string;
     function GetAddToProjectGroup: boolean;
     function InputsValidation: Boolean;
+    function DownloadFileFromURL(const AURL: string; ATempFileName: string): Boolean;
     { Private declarations }
   public
     property AddToProjectGroup: boolean read GetAddToProjectGroup;
@@ -89,6 +81,7 @@ procedure TFrm_OCWNewProject.Btn_CreateClick(Sender: TObject);
 var
   LvIsValid: Boolean;
   LvAPIStruct: TApiStructure;
+  LvTempFileName: string;
 begin
   LvIsValid := False;
   MarkUsed(LvIsValid);
@@ -108,18 +101,31 @@ begin
     FExtractedSpec.PrefixType := cbb_Prefix.ItemIndex;
     if rb_SelectFile.Checked then
       LvIsValid := TValidator.IsValid(edt_SpecFile.Text, TActiveType(cbb_Version.ItemIndex), FExtractedSpec)
+    else if rb_Download_URL.Checked then
+    begin
+      try
+        LvTempFileName := TPath.Combine(TPath.GetTempPath, TPath.GetFileName(Edt_DocURL.Text));
+        ShowMessage(LvTempFileName);
+        if DownloadFileFromURL(Edt_DocURL.Text, LvTempFileName) then
+          LvIsValid := TValidator.IsValid(LvTempFileName, TActiveType(cbb_Version.ItemIndex), FExtractedSpec)
+        else
+          ShowMessage('Failed to download the file.');
+      except on E: Exception do
+        ShowMessage('Failed to create temp file:' + E.Message);
+      end;
+    end
     else
     begin
       LvAPIStruct := TApiStructure.Create;
       try
         with LvAPIStruct do
         begin
-          ApiAddress := edt_DocURL.Text;
+          ApiAddress := edt_BaseURL.Text;
           AuthType := 'basic';
           Method := 'GET';
-          Token := edt_BearerToken.Text;
-          Username := edt_Username.Text;
-          Password := edt_Password.Text;
+          Token := EmptyStr;
+          Username := EmptyStr;
+          Password := EmptyStr;
           SpecType := TActiveType(cbb_Version.ItemIndex);
         end;
 
@@ -166,11 +172,11 @@ begin
       with TSingletonSettingObj.Instance do
       begin
         BaseURL := edt_BaseURL.Text;
-        BearerToken := edt_BearerToken.Text;
-        UserName := edt_Username.Text;
-        Password := edt_Password.Text;
+        BearerToken := EmptyStr;
+        UserName := EmptyStr;
+        Password := EmptyStr;
         Version := cbb_Version.ItemIndex;
-        AuthType := cbbAuth.ItemIndex;
+        AuthType := 0;
         BooleanStringForm := cbb_BooleanStringForm.ItemIndex;
       end;
 
@@ -224,13 +230,6 @@ begin
     edt_SpecFile.Text := FOD.FileName;
     FLastPath := ExtractFilePath(FOD.FileName);
   end;
-end;
-
-procedure TFrm_OCWNewProject.cbbAuthChange(Sender: TObject);
-begin
-  edt_Username.Enabled := cbbAuth.ItemIndex = 1;
-  edt_Password.Enabled := cbbAuth.ItemIndex = 1;
-  edt_BearerToken.Enabled := cbbAuth.ItemIndex = 2;
 end;
 
 procedure TFrm_OCWNewProject.edt_SpecFileDblClick(Sender: TObject);
@@ -309,45 +308,58 @@ begin
   else if Trim(edt_DocURL.Text).Equals(EmptyStr) then
   begin
     ShowMessage('OpenAPI specefication URL must be provided.');
-    edt_DocURL.SetFocus;
+    if edt_DocURL.CanFocus then
+      edt_DocURL.SetFocus;
     Exit;
 
 
     if Trim(edt_BaseURL.Text).Equals(EmptyStr) then
     begin
       ShowMessage('The Base URL must be provided.');
-      edt_BaseURL.SetFocus;
+      if edt_BaseURL.CanFocus then
+        edt_BaseURL.SetFocus;
       Exit;
-    end;
-
-    case cbbAuth.ItemIndex of
-      1: //Basic
-      begin
-        if (Trim(edt_Username.Text).Equals(EmptyStr)) or (Trim(edt_Password.Text).Equals(EmptyStr)) then
-        begin
-          ShowMessage('You must provide username and password with basic authentication.');
-          Exit;
-        end;
-      end;
-
-      2: //Bearer
-      begin
-        if Trim(edt_BearerToken.Text).Equals(EmptyStr) then
-        begin
-          ShowMessage('You must provide a token(Api key) with bearer authentication.');
-          Exit;
-        end;
-      end;
     end;
 
     if cbb_BooleanStringForm.ItemIndex = -1 then
     begin
       ShowMessage('Select one approche to deal with boolean values.');
+      if cbb_BooleanStringForm.CanFocus then
+        cbb_BooleanStringForm.SetFocus;
+
       Exit;
     end;
   end;
 
   Result := True;
+end;
+
+function TFrm_OCWNewProject.DownloadFileFromURL(const AURL: string; ATempFileName: string): Boolean;
+var
+  LvHttpClient: TNetHTTPClient;
+  LvFileStream: TFileStream;
+begin
+  Result := False;
+  LvHttpClient := TNetHTTPClient.Create(nil);
+  try
+    try
+      LvFileStream := TFileStream.Create(ATempFileName, fmCreate);
+      try
+        LvHttpClient.Get(AURL, LvFileStream);
+        Result := True;
+      finally
+        LvFileStream.Free;
+      end;
+    except
+      on E: Exception do
+      begin
+        Result := False;
+        raise Exception.Create('Error downloading file: ' + E.Message);
+      end;
+    end;
+  finally
+    LvHttpClient.Free;
+  end;
 end;
 
 end.

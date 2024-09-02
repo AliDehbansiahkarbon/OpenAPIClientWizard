@@ -4,8 +4,8 @@ object Frm_OCWNewProject: TFrm_OCWNewProject
   BorderIcons = [biSystemMenu, biMinimize]
   BorderStyle = bsToolWindow
   Caption = 'OpenAPI Client Project Wizard'
-  ClientHeight = 561
-  ClientWidth = 511
+  ClientHeight = 412
+  ClientWidth = 504
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
@@ -13,42 +13,39 @@ object Frm_OCWNewProject: TFrm_OCWNewProject
   Font.Name = 'Segoe UI'
   Font.Style = []
   KeyPreview = True
-  OldCreateOrder = True
   Position = poOwnerFormCenter
   OnCreate = FormCreate
   OnDestroy = FormDestroy
   OnKeyDown = FormKeyDown
-  PixelsPerInch = 96
   TextHeight = 15
   object pnl_Main: TPanel
     Left = 0
     Top = 0
-    Width = 511
-    Height = 561
+    Width = 504
+    Height = 412
     Align = alClient
     TabOrder = 0
     DesignSize = (
-      511
-      561)
+      504
+      412)
     object lbl_Validation: TLabel
       Left = 15
-      Top = 532
-      Width = 199
-      Height = 21
+      Top = 383
+      Width = 164
+      Height = 17
       Anchors = [akLeft, akBottom]
       Caption = 'Json structure is not valid!'
       Font.Charset = DEFAULT_CHARSET
       Font.Color = clRed
-      Font.Height = -16
+      Font.Height = -13
       Font.Name = 'Segoe UI'
       Font.Style = [fsBold]
       ParentFont = False
       Transparent = True
       Visible = False
-      ExplicitTop = 661
     end
     object btnAbout: TSpeedButton
-      Left = 444
+      Left = 437
       Top = 12
       Width = 41
       Height = 22
@@ -67,14 +64,14 @@ object Frm_OCWNewProject: TFrm_OCWNewProject
         'ion URL.'
     end
     object ActivityMonitor: TActivityIndicator
-      Left = 279
-      Top = 532
+      Left = 272
+      Top = 383
       Anchors = [akRight, akBottom]
       IndicatorSize = aisSmall
     end
     object Btn_Cancel: TButton
-      Left = 310
-      Top = 530
+      Left = 303
+      Top = 381
       Width = 75
       Height = 26
       Anchors = [akRight, akBottom]
@@ -83,8 +80,8 @@ object Frm_OCWNewProject: TFrm_OCWNewProject
       TabOrder = 1
     end
     object Btn_Create: TButton
-      Left = 391
-      Top = 530
+      Left = 384
+      Top = 381
       Width = 118
       Height = 26
       Anchors = [akRight, akBottom]
@@ -93,90 +90,12 @@ object Frm_OCWNewProject: TFrm_OCWNewProject
       TabOrder = 2
       OnClick = Btn_CreateClick
     end
-    object grpAuthorization: TGroupBox
-      Left = 14
-      Top = 229
-      Width = 479
-      Height = 168
-      Caption = 'Authorization'
-      TabOrder = 3
-      object lblAuth: TLabel
-        Left = 17
-        Top = 34
-        Width = 102
-        Height = 15
-        Caption = 'Authorization Type:'
-      end
-      object lblUsername: TLabel
-        Left = 25
-        Top = 74
-        Width = 56
-        Height = 15
-        Caption = 'Username:'
-        Enabled = False
-      end
-      object lblPassword: TLabel
-        Left = 28
-        Top = 102
-        Width = 53
-        Height = 15
-        Caption = 'Password:'
-        Enabled = False
-      end
-      object lblBearerToken: TLabel
-        Left = 11
-        Top = 130
-        Width = 70
-        Height = 15
-        Caption = 'Bearer Token:'
-        Enabled = False
-      end
-      object cbbAuth: TComboBox
-        Left = 125
-        Top = 31
-        Width = 121
-        Height = 23
-        Style = csDropDownList
-        ItemIndex = 0
-        TabOrder = 0
-        Text = 'No Auth'
-        OnChange = cbbAuthChange
-        Items.Strings = (
-          'No Auth'
-          'Basic'
-          'Bearer Token')
-      end
-      object edt_Username: TEdit
-        Left = 84
-        Top = 71
-        Width = 381
-        Height = 23
-        Enabled = False
-        TabOrder = 1
-      end
-      object edt_Password: TEdit
-        Left = 84
-        Top = 99
-        Width = 381
-        Height = 23
-        Enabled = False
-        TabOrder = 2
-      end
-      object edt_BearerToken: TEdit
-        Left = 84
-        Top = 127
-        Width = 381
-        Height = 23
-        Enabled = False
-        TabOrder = 3
-      end
-    end
     object grpDoc: TGroupBox
       Left = 14
       Top = 38
       Width = 479
-      Height = 185
-      TabOrder = 4
+      Height = 219
+      TabOrder = 3
       object Label4: TLabel
         Left = 77
         Top = 18
@@ -184,43 +103,36 @@ object Frm_OCWNewProject: TFrm_OCWNewProject
         Height = 15
         Caption = 'Format/Version:'
       end
-      object Label6: TLabel
-        Left = 9
-        Top = 157
-        Width = 51
-        Height = 15
-        Caption = 'Base URL:'
-      end
       object edt_DocURL: TEdit
-        Left = 40
-        Top = 118
-        Width = 425
+        Left = 26
+        Top = 125
+        Width = 423
         Height = 23
         TabOrder = 3
         TextHint = 'https://learn.openapis.org/examples/tictactoe.yaml'
       end
       object edt_SpecFile: TEdit
-        Left = 40
+        Left = 26
         Top = 67
         Width = 425
         Height = 23
         TabOrder = 1
         OnDblClick = edt_SpecFileDblClick
       end
-      object rb_API_URL: TRadioButton
-        Left = 16
-        Top = 96
-        Width = 95
+      object rb_Download_URL: TRadioButton
+        Left = 11
+        Top = 98
+        Width = 169
         Height = 17
-        Caption = 'API Doc URL'
+        Caption = 'API Doc URL to download:'
         TabOrder = 2
       end
       object rb_SelectFile: TRadioButton
-        Left = 13
+        Left = 11
         Top = 44
-        Width = 79
+        Width = 150
         Height = 17
-        Caption = 'Select file'
+        Caption = 'Select file(Offline Mode):'
         Checked = True
         TabOrder = 0
         TabStop = True
@@ -239,14 +151,14 @@ object Frm_OCWNewProject: TFrm_OCWNewProject
           'Postman Collection(Json) - v2.1')
       end
       object edt_BaseURL: TEdit
-        Left = 65
-        Top = 154
-        Width = 400
+        Left = 26
+        Top = 186
+        Width = 423
         Height = 23
         TabOrder = 5
       end
       object Btn_OpenFile: TButton
-        Left = 439
+        Left = 425
         Top = 69
         Width = 24
         Height = 19
@@ -254,14 +166,22 @@ object Frm_OCWNewProject: TFrm_OCWNewProject
         TabOrder = 6
         OnClick = Btn_OpenFileClick
       end
+      object rb_GetBaseURL: TRadioButton
+        Left = 11
+        Top = 163
+        Width = 124
+        Height = 17
+        Caption = 'Base URL(Rest GET):'
+        TabOrder = 7
+      end
     end
     object grpOtherOptions: TGroupBox
-      Left = 14
-      Top = 403
+      Left = 15
+      Top = 263
       Width = 479
       Height = 98
       Caption = 'Other Options'
-      TabOrder = 5
+      TabOrder = 4
       object Label2: TLabel
         Left = 20
         Top = 73
