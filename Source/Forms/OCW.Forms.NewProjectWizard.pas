@@ -105,7 +105,6 @@ begin
     begin
       try
         LvTempFileName := TPath.Combine(TPath.GetTempPath, TPath.GetFileName(Edt_DocURL.Text));
-        ShowMessage(LvTempFileName);
         if DownloadFileFromURL(Edt_DocURL.Text, LvTempFileName) then
           LvIsValid := TValidator.IsValid(LvTempFileName, TActiveType(cbb_Version.ItemIndex), FExtractedSpec)
         else
