@@ -104,6 +104,8 @@ begin
           LvJsonPaths := TJSONObject(AExtractedOpenAPI.FinalJson).GetValue('paths') as TJSONObject;
         except on E: exception do
           begin
+            LvJsonPaths := nil;
+            MarkObjectUsed(LvJsonPaths);
             {$IFDEF CODESITE}
             CodeSite.Send('(atSwaggerJSON, atOpenAPiJson), Cannot load from Json: ' + E.Message);
             {$ELSE}

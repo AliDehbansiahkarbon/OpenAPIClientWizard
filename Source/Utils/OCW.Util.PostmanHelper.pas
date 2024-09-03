@@ -3,9 +3,10 @@ unit OCW.Util.PostmanHelper;
 interface
 
 uses
-  System.Json, System.SysUtils, System.Generics.Collections
-  {$IF CompilerVersion <= 32.0},OCW.Util.Core{$ENDIF}
-  {$IFDEF CODESITE}, CodeSiteLogging {$ENDIF};
+  System.Json, System.SysUtils, System.Generics.Collections,
+  OCW.Util.Consts,
+  OCW.Util.Core
+  {$IFDEF CODESITE}, CodeSiteLogging{$ENDIF};
 
 type
   TPostmanAuth = class
@@ -196,17 +197,17 @@ begin
       LvJsonObj := AJsonValue as TJSONObject;
 
       // Load info property
-      if Assigned(LvJsonObj.FindValue('info')) then
-        FInfo := LvJsonObj.FindValue('info');
+      if Assigned(LvJsonObj.FindValue(cPostman_Info)) then
+        FInfo := LvJsonObj.FindValue(cPostman_Info);
 
       // Load variables property
-      if Assigned(LvJsonObj.FindValue('variables')) then
-        FVariables := LvJsonObj.FindValue('variables');
+      if Assigned(LvJsonObj.FindValue(cPostman_Variables)) then
+        FVariables := LvJsonObj.FindValue(cPostman_Variables);
 
       // Load items array
-      if Assigned(LvJsonObj.FindValue('item')) then
+      if Assigned(LvJsonObj.FindValue(cPostman_Item)) then
       begin
-        LvItemsArray := LvJsonObj.FindValue('item') as TJSONArray;
+        LvItemsArray := LvJsonObj.FindValue(cPostman_Item) as TJSONArray;
         for I := 0 to Pred(lvItemsArray.Count) do
         begin
           if LvItemsArray.Items[I] is TJSONObject  then
@@ -256,102 +257,97 @@ var
 begin
   if Assigned(AItemsJsonObj) then
   begin
-    if not Assigned(AItemsJsonObj.FindValue('request')) then
+    if not Assigned(AItemsJsonObj.FindValue(cPostman_Request)) then
       Exit;
 
     // Load item properties
-    if Assigned(AItemsJsonObj.FindValue('name')) then
-      AItem.Name := StringReplace(AItemsJsonObj.FindValue('name').Value.Trim, ' ', '_', [rfReplaceAll, rfIgnoreCase]);
+    if Assigned(AItemsJsonObj.FindValue(cPostman_Name)) then
+      AItem.Name := StringReplace(AItemsJsonObj.FindValue(cPostman_Name).Value.Trim, ' ', '_', [rfReplaceAll, rfIgnoreCase]);
 
     // Load request
-    if Assigned(AItemsJsonObj.FindValue('request')) then
+    if Assigned(AItemsJsonObj.FindValue(cPostman_Request)) then
     begin
       AItem.Request := TPostmanRequest.Create;
 
-      LvRequestJsonObject := AItemsJsonObj.FindValue('request') as TJSONObject;
+      LvRequestJsonObject := AItemsJsonObj.FindValue(cPostman_Request) as TJSONObject;
 
-      if Assigned(LvRequestJsonObject.FindValue('method')) then
-        AItem.Request.Method := LvRequestJsonObject.GetValue('method').Value;
+      AItem.Request.Method := LvRequestJsonObject.GetFindValue(cPostman_Method);
 
       // Load request authentication
-      if Assigned(LvRequestJsonObject.FindValue('auth')) then
+      if Assigned(LvRequestJsonObject.FindValue(cPostman_Auth)) then
       begin
-        if Assigned(LvRequestJsonObject.GetValue('auth').FindValue('type')) then
-          AItem.Request.Auth.AuthType := LvRequestJsonObject.GetValue('auth').FindValue('type').Value;
+        if Assigned(LvRequestJsonObject.GetValue(cPostman_Auth).FindValue(cPostman_Type)) then
+          AItem.Request.Auth.AuthType := LvRequestJsonObject.GetValue(cPostman_Auth).FindValue(cPostman_Type).Value;
 
-        if Assigned(LvRequestJsonObject.FindValue('auth').FindValue('bearer')) then
-          AItem.Request.Auth.Bearer := LvRequestJsonObject.GetValue('auth').FindValue('bearer');
+        if Assigned(LvRequestJsonObject.FindValue(cPostman_Auth).FindValue(cPostman_Bearer)) then
+          AItem.Request.Auth.Bearer := LvRequestJsonObject.GetValue(cPostman_Auth).FindValue(cPostman_Bearer);
       end;
 
       // Load request URL
-      if Assigned(LvRequestJsonObject.FindValue('url')) then
+      if Assigned(LvRequestJsonObject.FindValue(cPostman_Url)) then
       begin
-        LvUrlJsonObject := LvRequestJsonObject.FindValue('url') as TJSONObject;
+        LvUrlJsonObject := LvRequestJsonObject.FindValue(cPostman_Url) as TJSONObject;
 
-        if Assigned(LvUrlJsonObject.FindValue('raw')) then
-          AItem.Request.Url.Raw := LvUrlJsonObject.GetValue('raw').Value;
+        AItem.Request.Url.Raw := LvUrlJsonObject.GetFindValue(cPostman_Raw);
+        AItem.Request.Url.Protocol := LvUrlJsonObject.GetFindValue(cPostman_Protocol);
 
-        if Assigned(LvUrlJsonObject.FindValue('protocol')) then
-          AItem.Request.Url.Protocol := LvUrlJsonObject.GetValue('protocol').Value;
+        if Assigned(LvUrlJsonObject.FindValue(cPostman_Host)) then
+          AItem.Request.Url.Host := LvUrlJsonObject.GetValue(cPostman_Host);
 
-        if Assigned(LvUrlJsonObject.FindValue('host')) then
-          AItem.Request.Url.Host := LvUrlJsonObject.GetValue('host');
+        if Assigned(LvUrlJsonObject.FindValue(cPostman_Path)) then
+          AItem.Request.Url.Path := LvUrlJsonObject.GetValue(cPostman_Path);
 
-        if Assigned(LvUrlJsonObject.FindValue('path')) then
-          AItem.Request.Url.Path := LvUrlJsonObject.GetValue('path');
+        if Assigned(LvUrlJsonObject.FindValue(cPostman_Query)) then
+          AItem.Request.Url.Query := LvUrlJsonObject.GetValue(cPostman_Query); // Load Query
 
-        if Assigned(LvUrlJsonObject.FindValue('query')) then
-          AItem.Request.Url.Query := LvUrlJsonObject.GetValue('query'); // Load Query
-
-        if Assigned(LvUrlJsonObject.FindValue('variable')) then
-          AItem.Request.Url.Variable := LvUrlJsonObject.GetValue('variable'); // Load Variable
+        if Assigned(LvUrlJsonObject.FindValue(cPostman_variable)) then
+          AItem.Request.Url.Variable := LvUrlJsonObject.GetValue(cPostman_variable); // Load Variable
       end;
 
-
       // Load request headers
-      if Assigned(LvRequestJsonObject.FindValue('header')) then
-        AItem.Request.Header := LvRequestJsonObject.GetValue('header');
+      if Assigned(LvRequestJsonObject.FindValue(cPostman_Header)) then
+        AItem.Request.Header := LvRequestJsonObject.GetValue(cPostman_Header);
 
 
       // Load request body
-      if Assigned(LvRequestJsonObject.FindValue('body')) then
+      if Assigned(LvRequestJsonObject.FindValue(cPostman_Body)) then
       begin
-        if Assigned(LvRequestJsonObject.FindValue('body').FindValue('mode')) then
-          AItem.Request.Body.Mode := LvRequestJsonObject.FindValue('body').GetValue<string>('mode');
+        if Assigned(LvRequestJsonObject.FindValue(cPostman_Body).FindValue(cPostman_mode)) then
+          AItem.Request.Body.Mode := LvRequestJsonObject.FindValue(cPostman_Body).GetValue<string>(cPostman_mode);
 
-        if Assigned(LvRequestJsonObject.FindValue('body').FindValue('raw')) then
-          AItem.Request.Body.Raw := LvRequestJsonObject.FindValue('body').GetValue<string>('raw');
+        if Assigned(LvRequestJsonObject.FindValue(cPostman_Body).FindValue(cPostman_Raw)) then
+          AItem.Request.Body.Raw := LvRequestJsonObject.FindValue(cPostman_Body).GetValue<string>(cPostman_Raw);
 
-        if Assigned(LvRequestJsonObject.FindValue('body').FindValue('options')) then
+        if Assigned(LvRequestJsonObject.FindValue(cPostman_Body).FindValue(cPostman_Options)) then
         begin
-          if Assigned(LvRequestJsonObject.FindValue('body').FindValue('options').FindValue('raw')) then
-            AItem.Request.Body.Options.RawOptions := LvRequestJsonObject.FindValue('body').FindValue('options').FindValue('raw');
+          if Assigned(LvRequestJsonObject.FindValue(cPostman_Body).FindValue(cPostman_Options).FindValue(cPostman_Raw)) then
+            AItem.Request.Body.Options.RawOptions := LvRequestJsonObject.FindValue(cPostman_Body).FindValue(cPostman_Options).FindValue(cPostman_Raw);
         end;
       end;
     end;
 
     // Load response
-    if Assigned(AItemsJsonObj.FindValue('response')) then
-      AItem.Response := AItemsJsonObj.GetValue('response');
+    if Assigned(AItemsJsonObj.FindValue(cPostman_Response)) then
+      AItem.Response := AItemsJsonObj.GetValue(cPostman_Response);
 
 
     // Load protocol profile behavior
-    if Assigned(AItemsJsonObj.FindValue('protocolProfileBehavior')) then
+    if Assigned(AItemsJsonObj.FindValue(cPostman_ProtocolProfileBehavior)) then
     begin
-      if Assigned(AItemsJsonObj.GetValue('protocolProfileBehavior').FindValue('disableBodyPruning')) then
-        AItem.ProtocolProfileBehavior.DisableBodyPruning := TJSONObject(AItemsJsonObj.GetValue('protocolProfileBehavior')).GetValue<Boolean>('disableBodyPruning');
+      if Assigned(AItemsJsonObj.GetValue(cPostman_ProtocolProfileBehavior).FindValue(cPostman_DisableBodyPruning)) then
+        AItem.ProtocolProfileBehavior.DisableBodyPruning := TJSONObject(AItemsJsonObj.GetValue(cPostman_ProtocolProfileBehavior)).GetValue<Boolean>(cPostman_DisableBodyPruning);
     end;
 
     // Load child items
-    if Assigned(AItemsJsonObj.FindValue('item')) then
+    if Assigned(AItemsJsonObj.FindValue(cPostman_Item)) then
     begin
-      if AItemsJsonObj.GetValue('item') is TJSONObject then
+      if AItemsJsonObj.GetValue(cPostman_Item) is TJSONObject then
       begin
         LvItem := TPostmanItem.Create;
-        LoadValues(LvItem, AItemsJsonObj.GetValue('item') as TJSONObject);
+        LoadValues(LvItem, AItemsJsonObj.GetValue(cPostman_Item) as TJSONObject);
       end
-      else if AItemsJsonObj.GetValue('item') is TJSONArray then
-        LoadItem(AItemsJsonObj.FindValue('item') as TJSONArray);
+      else if AItemsJsonObj.GetValue(cPostman_Item) is TJSONArray then
+        LoadItem(AItemsJsonObj.FindValue(cPostman_Item) as TJSONArray);
     end;
     FItems.Add(AItem);
   end;

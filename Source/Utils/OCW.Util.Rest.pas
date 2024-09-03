@@ -10,11 +10,11 @@ interface
 uses
   System.Classes, System.SysUtils, VCL.Dialogs, System.Net.URLClient, System.Net.HttpClient,
   System.Net.HttpClientComponent, System.NetEncoding, Rest.Json, System.JSON, System.StrUtils,
-  System.Generics.Collections, OCW.Util.Core, Neslib.Yaml, System.Rtti;
+  System.Generics.Collections, Neslib.Yaml, System.Rtti,
+  OCW.Util.Core,
+  OCW.Util.Consts;
 
 type
-  TArrayString =  array of string;
-
   TApiStructure = class
   private
     FRequestObject: TObject;
@@ -22,7 +22,7 @@ type
     FToken: String;
     FAuthType: String;
     FMethod: String;
-    FCustomHeaders: TArrayString;
+    FCustomHeaders: TArray<string>;
     FContentType: String;
     FAccept: String;
     FTimeOut: Integer;
@@ -38,7 +38,7 @@ type
     property Token: String read FToken write FToken;
     property AuthType: String read FAuthType write FAuthType;
     property Method: String read FMethod write FMethod;
-    property CustomHeaders: TArrayString read FCustomHeaders write FCustomHeaders;
+    property CustomHeaders: TArray<string> read FCustomHeaders write FCustomHeaders;
     property ContentType: String read FContentType write FContentType;
     property Accept: String read FAccept write FAccept;
     property TimeOut: Integer read FTimeOut write FTimeOut;
@@ -59,24 +59,24 @@ uses
   CodeSiteLogging;
 {$ENDIF}
 
-function CreateNetHttp(AApiAddress, AContentType, AAccept:String; ATimeOut: Integer): TNetHTTPClient;
+function CreateNetHttp(const AApiAddress, AContentType, AAccept:string; ATimeOut: Integer): TNetHTTPClient;
 begin
   Result := TNetHTTPClient.Create(nil);
   Result.HandleRedirects := Pos('https://', AApiAddress) > 0;
   Result.ConnectionTimeout := ATimeOut; //5 minutes
   Result.ResponseTimeout := ATimeOut; //5 minutes
-  Result.AcceptCharSet := 'utf-8';
-  if AContentType = '' then
-    Result.ContentType := 'application/json'
+  Result.AcceptCharSet := Utf8AcceptCharSet;
+  if AContentType = EmptyStr then
+    Result.ContentType := cJson_ApplicationJson
   else
     Result.ContentType := AContentType;
 
   if AAccept.IsEmpty then
-    Result.Accept := 'application/json'
+    Result.Accept := cJson_ApplicationJson
   else
     Result.Accept := AAccept;
 
-  Result.AcceptEncoding := 'utf-8';
+  Result.AcceptEncoding := Utf8AcceptCharSet;
 end;
 
 { TApiStructure }
@@ -94,14 +94,14 @@ var
   LvRequestString: String;
   LvHeaders: TNetHeaders;
 begin
-  Result := '';
-  if FApiAddress = '' then
+  Result := EmptyStr;
+  if FApiAddress.Equals(EmptyStr) then
     Exit;
 
   LvHttp := CreateNetHttp(FApiAddress, FContentType, FAccept, FTimeOut);
-  LvResponseStream := TStringStream.Create('', TEncoding.UTF8);
+  LvResponseStream := TStringStream.Create(EmptyStr, TEncoding.UTF8);
   try
-    if FToken <> '' then
+    if not FToken.Equals(EmptyStr) then
     begin
       SetLength(LvHeaders,1);
       LvHeaders[0].Name := 'Authorization';
@@ -119,7 +119,7 @@ begin
       for I := 0 to Length(FCustomHeaders) - 1 do
       begin
         if Odd(I) then Continue;
-        if FCustomHeaders[I] <> '' then
+        if FCustomHeaders[I] <> EmptyStr then
         begin
           SetLength(LvHeaders, length(LvHeaders) + 1);
           LvHeaders[length(LvHeaders) - 1].Name := FCustomHeaders[I];
@@ -127,7 +127,7 @@ begin
         end;
       end;
     end;
-    LvRequestString := '';
+    LvRequestString := EmptyStr;
     if FRequestObject <> nil then
     begin
       if FRequestObject.ClassName <> 'TStringStream' then
@@ -145,7 +145,7 @@ begin
 
     except on E:Exception do
       begin
-        Result := '';
+        Result := EmptyStr;
         ShowMessage(E.Message);
         Exit;
       end;

@@ -76,16 +76,22 @@ type
       property ExtractedObject: T read GetExtracted write SetExtracted;
   end;
 
+
+  TJsonObjectHelper = class helper for TJSONObject
+  public
+    function GetFindValue(const APath: string): string;
+  end;
+
   procedure MarkUsed(const AValue: Variant);
   procedure MarkJsonUsed(const AValue: TJSONArray);
   procedure MarkObjectUsed(const AValue: TObject);
-
 
 implementation
 
 procedure MarkUsed(const AValue: Variant);
 begin
   // Do nothing. This procedure is only to mark variables as used.
+  // This will prevent the compiler to show wronge warnings!
 end;
 
 procedure MarkJsonUsed(const AValue: TJSONArray);
@@ -268,6 +274,16 @@ begin
   Result := LCurrentValue;
 end;
 {$IFEND}
+
+{ TJsonObjectHelper }
+
+function TJsonObjectHelper.GetFindValue(const APath: string): string;
+begin
+  if Assigned(Self.FindValue(APath)) then
+    Result := Self.GetValue(APath).Value
+  else
+    Result := EmptyStr;
+end;
 
 begin
 end.

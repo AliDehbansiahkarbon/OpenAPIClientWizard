@@ -340,6 +340,7 @@ var
   LvFileStream: TFileStream;
 begin
   Result := False;
+  MarkUsed(Result);
   LvHttpClient := TNetHTTPClient.Create(nil);
   try
     try
@@ -354,6 +355,7 @@ begin
       on E: Exception do
       begin
         Result := False;
+        MarkUsed(Result);
         raise Exception.Create('Error downloading file: ' + E.Message);
       end;
     end;

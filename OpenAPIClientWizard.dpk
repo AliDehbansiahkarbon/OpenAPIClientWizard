@@ -59,6 +59,7 @@ contains
   Neslib.Hash in 'Source\ThrdParty\Neslib.Yaml\Neslib\Neslib.Hash.pas',
   Neslib.SysUtils in 'Source\ThrdParty\Neslib.Yaml\Neslib\Neslib.SysUtils.pas',
   Neslib.LibYaml in 'Source\ThrdParty\Neslib.Yaml\Neslib.LibYaml.pas',
-  Neslib.Yaml in 'Source\ThrdParty\Neslib.Yaml\Neslib.Yaml.pas';
+  Neslib.Yaml in 'Source\ThrdParty\Neslib.Yaml\Neslib.Yaml.pas',
+  OCW.Util.Consts in 'Source\Utils\OCW.Util.Consts.pas';
 
 end.

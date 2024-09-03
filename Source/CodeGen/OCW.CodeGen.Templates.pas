@@ -190,7 +190,6 @@ resourcestring
     '  System.Net.HttpClientComponent, System.NetEncoding, Rest.Json;' + sLineBreak +
     sLineBreak +
     'type' + sLineBreak +
-    '  TArrayString =  array of string;' + sLineBreak +
     '  TApiStructure = class' + sLineBreak +
     '  private' + sLineBreak +
     '    FRequestObject: TObject;' + sLineBreak +
@@ -198,12 +197,14 @@ resourcestring
     '    FToken: String;' + sLineBreak +
     '    FAuthType: String;' + sLineBreak +
     '    FMethod: String;' + sLineBreak +
-    '    FCustomHeaders: TArrayString;' + sLineBreak +
+    '    FCustomHeaders: TArray<string>;' + sLineBreak +
     '    FContentType: string;' + sLineBreak +
     '    FAccept: string;' + sLineBreak +
     '    FTimeOut: Integer;' + sLineBreak +
     '    FUsername: string;' + sLineBreak +
     '    FPassword: string;' + sLineBreak +
+    '    procedure SetCustomHeadersCount(AValue: Integer);' + sLineBreak +
+    '    function GetCustomHeadersCount: Integer;' + sLineBreak +
     '  public' + sLineBreak +
     '    constructor Create;' + sLineBreak +
     '    property RequestObject: TObject read FRequestObject write FRequestObject;' + sLineBreak +
@@ -211,12 +212,13 @@ resourcestring
     '    property Token: string read FToken write FToken;' + sLineBreak +
     '    property AuthType: string read FAuthType write FAuthType;' + sLineBreak +
     '    property Method: string read FMethod write FMethod;' + sLineBreak +
-    '    property CustomHeaders: TArrayString read FCustomHeaders write FCustomHeaders;' + sLineBreak +
+    '    property CustomHeaders: TArray<string> read FCustomHeaders write FCustomHeaders;' + sLineBreak +
     '    property ContentType: string read FContentType write FContentType;' + sLineBreak +
     '    property Accept: string read FAccept write FAccept;' + sLineBreak +
     '    property TimeOut: Integer read FTimeOut write FTimeOut;' + sLineBreak +
     '    property Username: string read FUsername write FUsername;' + sLineBreak +
     '    property Password: string read FPassword write FPassword;' + sLineBreak +
+    '    property CustomHeadersCount: Integer read GetCustomHeadersCount write SetCustomHeadersCount;' + sLineBreak +
     '  end;' + sLineBreak +
     sLineBreak +
     '  function SendToAPI(AApiStruct: TApiStructure): string;' + sLineBreak +
@@ -325,6 +327,17 @@ resourcestring
     '  FTimeOut := 30000; // Default timeout for connection and response timeout = 5 minutes!' + sLineBreak +
     'end;' + sLineBreak +
     sLineBreak +
+
+    'function TApiStructure.GetCustomHeadersCount: Integer;' + sLineBreak +
+    'begin' + sLineBreak +
+    '  Result := Length(FCustomHeaders);' + sLineBreak +
+    'end;' + sLineBreak +
+    sLineBreak +
+    'procedure TApiStructure.SetCustomHeadersCount(AValue: Integer);' + sLineBreak +
+    'begin' + sLineBreak +
+    '  SetLength(FCustomHeaders, AValue);' + sLineBreak +
+    'end;' + sLineBreak +
+    sLineBreak +
     'end.';
 
   //=============================
@@ -343,6 +356,9 @@ resourcestring
   //==================================
   //0: MethodName
   //1: In-path and Quesry parameters
+  //2: Request Object creation
+  //3: Header parameters count
+  //4: Header parameters count
   sGetFunctionBody =
     'var' + sLineBreak +
     '  LvStruct: TApiStructure;' + sLineBreak +
@@ -350,6 +366,9 @@ resourcestring
     '  LvStruct := NewApiStructure(''GET'', ''%0:s'');' + sLineBreak +
     '  try' + sLineBreak +
     '    LvStruct.ApiAddress := LvStruct.ApiAddress%1:s;' + sLineBreak +
+    '    %2:s' + sLineBreak +
+    '    %3:s' + sLineBreak +
+    '    %4:s' + sLineBreak +
     '    Result := SendToAPI(LvStruct);' + sLineBreak +
     '  finally' + sLineBreak +
     '    LvStruct.Free;' + sLineBreak +
@@ -360,7 +379,8 @@ resourcestring
   //0: MethodName
   //1: In-path and Quesry parameters
   //2: Request Object creation
-
+  //3: Header parameters count
+  //4: Header parameters count
   sPostFunctionBody =
     'var' + sLineBreak +
     '  LvStruct: TApiStructure;' + sLineBreak +
@@ -368,7 +388,9 @@ resourcestring
     '  LvStruct := NewApiStructure(''POST'', ''%0:s'');' + sLineBreak +
     '  try' + sLineBreak +
     '    LvStruct.ApiAddress := LvStruct.ApiAddress%1:s;' + sLineBreak +
-    '    %2:s' +
+    '    %2:s' + sLineBreak +
+    '    %3:s' + sLineBreak +
+    '    %4:s' + sLineBreak +
     '    Result := SendToAPI(LvStruct);' + sLineBreak +
     '  finally' + sLineBreak +
     '    LvStruct.Free;' + sLineBreak +
@@ -378,7 +400,29 @@ resourcestring
   //0: MethodName
   //1: In-path and Quesry parameters
   //2: Request Object creation
+  //3: Header parameters count
+  //4: Header parameters count
+  sPatchFunctionBody =
+    'var' + sLineBreak +
+    '  LvStruct: TApiStructure;' + sLineBreak +
+    'begin' + sLineBreak +
+    '  LvStruct := NewApiStructure(''PATCH'', ''%0:s'');' + sLineBreak +
+    '  try' + sLineBreak +
+    '    LvStruct.ApiAddress := LvStruct.ApiAddress%1:s;' + sLineBreak +
+    '    %2:s' + sLineBreak +
+    '    %3:s' + sLineBreak +
+    '    %4:s' + sLineBreak +
+    '    Result := SendToAPI(LvStruct);' + sLineBreak +
+    '  finally' + sLineBreak +
+    '    LvStruct.Free;' + sLineBreak +
+    '  end;';
 
+  //==================================
+  //0: MethodName
+  //1: In-path and Quesry parameters
+  //2: Request Object creation
+  //3: Header parameters count
+  //4: Header parameters count
   sPutFunctionBody =
     'var' + sLineBreak +
     '  LvStruct: TApiStructure;' + sLineBreak +
@@ -386,7 +430,9 @@ resourcestring
     '  LvStruct := NewApiStructure(''PUT'', ''%0:s'');' + sLineBreak +
     '  try' + sLineBreak +
     '    LvStruct.ApiAddress := LvStruct.ApiAddress%1:s;' + sLineBreak +
-    '    %2:s' +
+    '    %2:s' + sLineBreak +
+    '    %3:s' + sLineBreak +
+    '    %4:s' + sLineBreak +
     '    Result := SendToAPI(LvStruct);' + sLineBreak +
     '  finally' + sLineBreak +
     '    LvStruct.Free;' + sLineBreak +
@@ -396,7 +442,8 @@ resourcestring
   //0: MethodName
   //1: In-path and Quesry parameters
   //2: Request Object creation
-
+  //3: Header parameters count
+  //4: Header parameters count
   sDeleteFunctionBody =
     'var' + sLineBreak +
     '  LvStruct: TApiStructure;' + sLineBreak +
@@ -404,7 +451,9 @@ resourcestring
     '  LvStruct := NewApiStructure(''DELETE'', ''%0:s'');' + sLineBreak +
     '  try' + sLineBreak +
     '    LvStruct.ApiAddress := LvStruct.ApiAddress%1:s;' + sLineBreak +
-    '    %2:s' +
+    '    %2:s' + sLineBreak +
+    '    %3:s' + sLineBreak +
+    '    %4:s' + sLineBreak +
     '    Result := SendToAPI(LvStruct);' + sLineBreak +
     '  finally' + sLineBreak +
     '    LvStruct.Free;' + sLineBreak +
@@ -417,13 +466,15 @@ resourcestring
   //4: Authentication Type
   //5: GetMethods Definition
   //6: PostMethods Definition
-  //7: PutMethods Definition
-  //8: DeleteMethod_Definition
-  //9: Add Paths
-  //10: GetMethod Implementations
-  //11: PostMethod Implementations
-  //12: PutMethod Implementations
-  //13: DeleteMethod Implementations
+  //7: PatchMethods Definition
+  //8: PutMethods Definition
+  //9: DeleteMethod_Definition
+  //10: Add Paths
+  //11: GetMethod Implementations
+  //12: PostMethod Implementations
+  //13: PatchMethod Implementations
+  //14: PutMethod Implementations
+  //15: DeleteMethod Implementations
 
   sClientClassUnit =
     'unit ClientClass;' + sLineBreak +
@@ -458,6 +509,7 @@ resourcestring
     '    %6:s' + //sLineBreak +
     '    %7:s' + //sLineBreak +
     '    %8:s' + //sLineBreak +
+    '    %9:s' + //sLineBreak +
     sLineBreak +
     '    property Paths: TDictionary<string, string> read FPaths;' + sLineBreak +
     '  end;' + sLineBreak +
@@ -512,13 +564,14 @@ resourcestring
     'procedure TClientClass.SetPaths;' + sLineBreak +
     'begin' + sLineBreak +
     '  FPaths' + sLineBreak +
-    '%9:s' + sLineBreak +
+    '%10:s' + sLineBreak +
     'end;' + sLineBreak +
 
-    '%10:s' + //sLineBreak +
     '%11:s' + //sLineBreak +
     '%12:s' + //sLineBreak +
     '%13:s' + //sLineBreak +
+    '%14:s' + //sLineBreak +
+    '%15:s' + //sLineBreak +
 
     '{TDicHelper}' + sLineBreak +
     sLineBreak +

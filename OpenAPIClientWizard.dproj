@@ -91,7 +91,7 @@
         <VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_1)'!=''">
-        <DCC_Define>DEBUG;Codesite;$(DCC_Define)</DCC_Define>
+        <DCC_Define>DEBUG;$(DCC_Define)</DCC_Define>
         <DCC_DebugDCUs>true</DCC_DebugDCUs>
         <DCC_Optimize>false</DCC_Optimize>
         <DCC_GenerateStackFrames>true</DCC_GenerateStackFrames>
@@ -150,6 +150,7 @@
         <DCCReference Include="Source\ThrdParty\Neslib.Yaml\Neslib\Neslib.SysUtils.pas"/>
         <DCCReference Include="Source\ThrdParty\Neslib.Yaml\Neslib.LibYaml.pas"/>
         <DCCReference Include="Source\ThrdParty\Neslib.Yaml\Neslib.Yaml.pas"/>
+        <DCCReference Include="Source\Utils\OCW.Util.Consts.pas"/>
         <RcItem Include="Resource\OCWNewProjectIcon.ico">
             <ResourceType>ICON</ResourceType>
             <ResourceId>OCWProjectIcon</ResourceId>

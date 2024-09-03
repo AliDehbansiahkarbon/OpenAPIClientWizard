@@ -9,7 +9,7 @@ interface
 
 uses
   ToolsApi, System.IOUtils, System.JSON, System.Generics.Collections,
-  System.StrUtils, System.SysUtils, System.Types,
+  System.StrUtils, System.SysUtils, System.Types, System.Classes,
 
   OCW.Util.Core,
   OCW.CodeGen.NewUnit,
@@ -67,7 +67,7 @@ var
   I: Integer;
   LvChar: Char;
 begin
-  Result := '';
+  Result := EmptyStr;
   for I := 1 to Length(AInputStr) do
   begin
     LvChar := AInputStr[I];
@@ -82,10 +82,10 @@ constructor TNewModelUnitEx.Create(const AModelClassName, APersonality: string; 
                                    AOpenAPIPaths: TObjectDictionary<string, TOpenAPIPath>);
 begin
   Assert(Length(AModelClassName) > 0);
-  FAncestorName := '';
-  FFormName := '';
-  FImplFileName := '';
-  FIntfFileName := '';
+  FAncestorName := EmptyStr;
+  FFormName := EmptyStr;
+  FImplFileName := EmptyStr;
+  FIntfFileName := EmptyStr;
   FModelClassName := AModelClassName;
   FIsMainUnit := AIsMainUnit;
   Personality := APersonality;
@@ -98,9 +98,9 @@ begin
 
   if AModelClassName.Equals('Model') then
   begin
-    FAncestorName := '';
-    FFormName := '';
-    FIntfFileName := '';
+    FAncestorName := EmptyStr;
+    FFormName := EmptyStr;
+    FIntfFileName := EmptyStr;
     FImplFileName := 'ClientClass.pas';
   end;
 
@@ -178,6 +178,7 @@ begin
     case AMethodType of
       mtGet: Result := 'Get_';
       mtPost: Result := 'Post_';
+      mtPatch: Result := 'Patch_';
       mtPut: Result := 'Put_';
       mtDelete: Result := 'Delete_';
     end;
@@ -193,6 +194,7 @@ begin
     case AMethodType of
       mtGet: Result := '_Get';
       mtPost: Result := '_Post';
+      mtPatch: Result := '_Patch';
       mtPut: Result := '_Put';
       mtDelete: Result := '_Delete';
     end;
@@ -229,11 +231,17 @@ function TNewModelUnitEx.BuildFunctionBody(AMethodObj: TMethodObject): string;
 var
   LvParam: TParameter;
 
-  LvQueryParams: string;
   LvInPathParams: string;
+  LvQueryParams: string;
+  LvHeaderParams: TStringList;
+
   LvParameterType: string;
   LvFullParamList: string;
   LvRequestObjectSection: string;
+  LvHeaderParamsCount: string;
+  LvLastHeaderIndex: Integer;
+  LvHeaderParamsFinalString: string;
+  I: Integer;
 begin
   Result := EmptyStr;
   LvParameterType := EmptyStr;
@@ -241,37 +249,59 @@ begin
   LvQueryParams := EmptyStr;
   LvFullParamList:= EmptyStr;
   LvRequestObjectSection := EmptyStr;
-
-  if Assigned(AMethodObj.Params) then
-  begin
-    for LvParam in AMethodObj.Params do
+  LvHeaderParamsCount := EmptyStr;
+  LvLastHeaderIndex := -1;
+  LvHeaderParamsFinalString := EmptyStr;
+  LvHeaderParams := TStringList.Create;
+  try
+    if Assigned(AMethodObj.Params) then
     begin
-      LvParameterType := LvParam.&In.Trim.ToLower;
+      for LvParam in AMethodObj.Params do
+      begin
+        LvParameterType := LvParam.&In.Trim.ToLower;
 
-      if LvParameterType.Equals('path') then
-        LvInPathParams := LvInPathParams + IfThen(LvInPathParams.IsEmpty, EmptyStr, ' + ') + QuotedStr('/') + AddCastings(LvParam)
-      else if LvParameterType.Equals('query') then
-        LvQueryParams := LvQueryParams +
-          IfThen(LvQueryParams.IsEmpty, EmptyStr, ' + ') +
-          QuotedStr(IfThen(LvQueryParams.IsEmpty, '?', '&') + LvParam.Name + '=' ) + AddCastings(LvParam);
+        if LvParameterType.Equals('path') then
+          LvInPathParams := LvInPathParams + IfThen(LvInPathParams.IsEmpty, EmptyStr, ' + ') + QuotedStr('/') + AddCastings(LvParam)
+        else if LvParameterType.Equals('query') then
+        begin
+          LvQueryParams := LvQueryParams +
+            IfThen(LvQueryParams.IsEmpty, EmptyStr, ' + ') +
+            QuotedStr(IfThen(LvQueryParams.IsEmpty, '?', '&') + LvParam.Name + '=' ) + AddCastings(LvParam)
+        end
+        else if LvParameterType.Equals('header') then
+        begin
+          if LvLastHeaderIndex = -1 then
+            LvLastHeaderIndex := LvHeaderParams.Add('LvStruct.CustomHeaders[0] := ' + QuotedStr(LvParam.Originalname + ': ') + '+ ' + 'A' + LvParam.Name + ';')
+          else
+            LvLastHeaderIndex := LvHeaderParams.Add('LvStruct.CustomHeaders[' + (LvLastHeaderIndex + 1).ToString + '] := ' + QuotedStr(LvParam.Originalname + ': ') + '+ ' + 'A' + LvParam.Name + ';')
+        end;
+      end;
     end;
+
+    LvFullParamList := LvInPathParams + IfThen((LvInPathParams.Trim.IsEmpty or LvQueryParams.Trim.IsEmpty), EmptyStr, ' + ') +  LvQueryParams;
+    LvFullParamList := IfThen(LvFullParamList.Trim.IsEmpty, EmptyStr, Concat(' + ', LvFullParamList.TrimRight));
+
+    if (AMethodObj.RequestBody.Properties.Count > 0) or (not AMethodObj.RequestBody.Example.IsEmpty) then
+      LvRequestObjectSection := 'LvStruct.RequestObject := ARequestObj;' + sLineBreak;
+
+    LvHeaderParamsCount := IfThen(LvHeaderParams.Count = 0, EmptyStr, 'LvStruct.CustomHeadersCount := ' + LvHeaderParams.Count.ToString + ';');
+
+    for I := 0 to Pred(LvHeaderParams.Count) do
+      LvHeaderParamsFinalString := LvHeaderParamsFinalString + IfThen(LvHeaderParamsFinalString.IsEmpty, LvHeaderParams[I] , '    ' + LvHeaderParams[I]) + sLineBreak;
+
+    case AMethodObj.MethodType of
+      mtGet: Result := Format(sGetFunctionBody, [AMethodObj._MethodName, LvFullParamList, LvRequestObjectSection, LvHeaderParamsCount, LvHeaderParamsFinalString.TrimRight]);
+      mtPost: Result := Format(sPostFunctionBody, [AMethodObj._MethodName, LvFullParamList, LvRequestObjectSection, LvHeaderParamsCount, LvHeaderParamsFinalString.TrimRight]);
+      mtPatch: Result := Format(sPatchFunctionBody, [AMethodObj._MethodName, LvFullParamList, LvRequestObjectSection, LvHeaderParamsCount, LvHeaderParamsFinalString.TrimRight]);
+      mtPut: Result := Format(sPutFunctionBody, [AMethodObj._MethodName, LvFullParamList, LvRequestObjectSection, LvHeaderParamsCount, LvHeaderParamsFinalString.TrimRight]);
+      mtDelete: Result := Format(sDeleteFunctionBody, [AMethodObj._MethodName, LvFullParamList, LvRequestObjectSection, LvHeaderParamsCount, LvHeaderParamsFinalString.TrimRight]);
+    end;
+
+    if Result.IsEmpty then
+      Result := 'begin' + sLineBreak;
+  finally
+    LvHeaderParams.Free;
   end;
-
-  LvFullParamList := LvInPathParams + IfThen((LvInPathParams.Trim.IsEmpty or LvQueryParams.Trim.IsEmpty), EmptyStr, ' + ') +  LvQueryParams;
-  LvFullParamList := IfThen(LvFullParamList.Trim.IsEmpty, EmptyStr, Concat(' + ', LvFullParamList.TrimRight));
-
-  if (AMethodObj.RequestBody.Properties.Count > 0) or (not AMethodObj.RequestBody.Example.IsEmpty) then
-    LvRequestObjectSection := 'LvStruct.RequestObject := ARequestObj;' + sLineBreak;
-
-  case AMethodObj.MethodType of
-    mtGet: Result := Format(sGetFunctionBody, [AMethodObj._MethodName, LvFullParamList, LvRequestObjectSection]);
-    mtPost: Result := Format(sPostFunctionBody, [AMethodObj._MethodName, LvFullParamList, LvRequestObjectSection]);
-    mtPut: Result := Format(sPutFunctionBody, [AMethodObj._MethodName, LvFullParamList, LvRequestObjectSection]);
-    mtDelete: Result := Format(sDeleteFunctionBody, [AMethodObj._MethodName, LvFullParamList, LvRequestObjectSection]);
-  end;
-
-  if Result.IsEmpty then
-    Result := 'begin' + sLineBreak;
 end;
 
 function TNewModelUnitEx.NewImplSource(const ModuleIdent, FormIdent, AncestorIdent: string): IOTAFile;
@@ -315,7 +345,7 @@ begin
         LvUnitContent := PrepareSourceString(sClientClassUnit);
       except on E: Exception do
         {$IFDEF CODESITE}
-          CodeSite.Send('253/PrepareSourceString(sClientClassUnit)' + #13 + E.Message);
+          CodeSite.Send('PrepareSourceString(sClientClassUnit)' + #13 + E.Message);
         {$ELSE}
         raise;
         {$ENDIF}
@@ -436,6 +466,8 @@ var
   LvAllGetFunctionImplementation: string;
   LvAllPostfunctionHeaders: string;
   LvAllPostFunctionImplementation: string;
+  LvAllPatchfunctionHeaders: string;
+  LvAllPatchFunctionImplementation: string;
   LvAllPutfunctionHeaders: string;
   LvAllPutFunctionImplementation: string;
   LvAllDeletefunctionHeaders: string;
@@ -539,6 +571,18 @@ begin
                                        Format(sFunctionImplementation, [GetPrefix(mtPost) + LvMethod._MethodName + GetSuffix(mtPost), LvParamFinalList, BuildFunctionBody(LvMethod)]);
           end;
 
+          mtPatch:
+          begin
+            LvAllPatchfunctionHeaders :=
+                                    LvAllPatchfunctionHeaders + sLineBreak + '    ' +
+                                    Format(sFunctionHeader, [GetPrefix(mtPatch) + LvMethod._MethodName + GetSuffix(mtPatch), LvParamFinalList]);
+
+
+            LvAllPatchFunctionImplementation :=
+                                       LvAllPatchFunctionImplementation + sLineBreak +
+                                       Format(sFunctionImplementation, [GetPrefix(mtPatch) + LvMethod._MethodName + GetSuffix(mtPatch), LvParamFinalList, BuildFunctionBody(LvMethod)]);
+          end;
+
           mtPut:
           begin
             LvAllPutfunctionHeaders :=
@@ -578,11 +622,13 @@ begin
                                 LvSetting.Password, LvSetting.BearerToken, ConvertAuthenticationType(LvSetting.AuthType),
                                 IfThen(LvAllGetfunctionHeaders.Trim.Equals(EmptyStr), '', AddBreaklines(LvAllGetfunctionHeaders, ';') + sLineBreak),
                                 IfThen(LvAllPostfunctionHeaders.Trim.Equals(EmptyStr), '', AddBreaklines(LvAllPostfunctionHeaders, ';') + sLineBreak),
+                                IfThen(LvAllPatchfunctionHeaders.Trim.Equals(EmptyStr), '', AddBreaklines(LvAllPatchfunctionHeaders, ';') + sLineBreak),
                                 IfThen(LvAllPutfunctionHeaders.Trim.Equals(EmptyStr), '', AddBreaklines(LvAllPutfunctionHeaders, ';') + sLineBreak),
                                 IfThen(LvAllDeletefunctionHeaders.Trim.Equals(EmptyStr), '', AddBreaklines(LvAllDeletefunctionHeaders, ';') + sLineBreak),
                                 IfThen(LvMethodListAddition.Trim.Equals(EmptyStr), '', AddBreaklines(LvMethodListAddition, ';') + sLineBreak),
                                 IfThen(LvAllGetFunctionImplementation.Trim.Equals(EmptyStr), '', AddBreaklines(LvAllGetFunctionImplementation, '+') + sLineBreak),
                                 IfThen(LvAllPostFunctionImplementation.Trim.Equals(EmptyStr), '', AddBreaklines(LvAllPostFunctionImplementation, '+') + sLineBreak),
+                                IfThen(LvAllPatchFunctionImplementation.Trim.Equals(EmptyStr), '', AddBreaklines(LvAllPatchFunctionImplementation, '+') + sLineBreak),
                                 IfThen(LvAllPutFunctionImplementation.Trim.Equals(EmptyStr), '', AddBreaklines(LvAllPutFunctionImplementation, '+') + sLineBreak),
                                 IfThen(LvAllDeleteFunctionImplementation.Trim.Equals(EmptyStr), '', AddBreaklines(LvAllDeleteFunctionImplementation, '+') + sLineBreak)]);
 
@@ -592,13 +638,15 @@ begin
   //3: Token or API Key
   //4: GetMethods Definition
   //5: PostMethods Definition
-  //6: PutMethods Definition
-  //7: DeleteMethod_Definition
-  //8: Add Paths
-  //9: GetMethod Implementations
-  //10: PostMethod Implementations
-  //11: PutMethod Implementations
-  //12 DeleteMethod Implementations
+  //6: patchMethods Definition
+  //7: PutMethods Definition
+  //8: DeleteMethod_Definition
+  //9: Add Paths
+  //10: GetMethod Implementations
+  //11: PostMethod Implementations
+  //12: PatchMethod Implementations
+  //13: PutMethod Implementations
+  //14 DeleteMethod Implementations
 
   {$IFDEF CODESITE}
     //CodeSite.Send('Result of the Source String Preparation= ' + Result);

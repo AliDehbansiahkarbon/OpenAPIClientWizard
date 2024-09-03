@@ -8,21 +8,24 @@ interface
 
 uses
   Vcl.Dialogs, System.Classes, System.Generics.Collections, System.JSON, System.SysUtils,
-  Neslib.Yaml, System.TypInfo, System.StrUtils, OCW.Util.PostmanHelper
-  ,OCW.Util.Core {$IFDEF CODESITE}, CodeSiteLogging{$ENDIF};
+  Neslib.Yaml, System.TypInfo, System.StrUtils, OCW.Util.PostmanHelper,
+  OCW.Util.Core, OCW.Util.Consts {$IFDEF CODESITE}, CodeSiteLogging{$ENDIF};
 
 type
   TParameter = class
   private
     FName: string;
+    FOriginalname: string;
     FIn: string;
     FDescription: string;
     FRequired: Boolean;
     FDataType: string;
     function CLeanDataType(ARawDataType: string): string;
+    function CleanName(const AName: string): string;
   public
     constructor Create(AName, AIn, ADescription, ADataType: string; ARequired: Boolean);
     property Name: string read FName;
+    property Originalname: string read FOriginalname;
     property &In: string read FIn;
     property Description: string read FDescription;
     property Required: Boolean read FRequired;
@@ -126,36 +129,36 @@ begin
     for I := 0 to Pred(FJsonParams.Count - 1) do
     begin
       LvParam := FJsonParams.Pairs[I];
-      if LvParam.JsonString.Value.ToLower.Equals('requestbody') then
+      if LvParam.JsonString.Value.ToLower.Equals(cJson_RequestBody) then
       begin
         if LvParam.JsonValue.TryGetValue<TJSONObject>(LvRequestBody) then
         begin
-          if Assigned(LvRequestBody.FindValue('description')) then
-            FRequestBody.Description := LvRequestBody.GetValue('description').Value;
+          if Assigned(LvRequestBody.FindValue(cJson_Description)) then
+            FRequestBody.Description := LvRequestBody.GetValue(cJson_Description).Value;
 
-          if Assigned(LvRequestBody.FindValue('required')) then
-            FRequestBody.Required := LvRequestBody.GetValue('required').AsType<Boolean>;
+          if Assigned(LvRequestBody.FindValue(cJson_Required)) then
+            FRequestBody.Required := LvRequestBody.GetValue(cJson_Required).AsType<Boolean>;
 
-          if Assigned(LvRequestBody.FindValue('content')) then
+          if Assigned(LvRequestBody.FindValue(cJson_Content)) then
           begin
-            LvContent := LvRequestBody.GetValue('content') as TJSONObject;
+            LvContent := LvRequestBody.GetValue(cJson_Content) as TJSONObject;
 
-            if Assigned(LvContent.FindValue('application/json')) then
+            if Assigned(LvContent.FindValue(cJson_ApplicationJson)) then
             begin
-              if LvContent.GetValue('application/json') is TJSONObject then
+              if LvContent.GetValue(cJson_ApplicationJson) is TJSONObject then
               begin
-                LvApplicationNode := LvContent.GetValue('application/json') as TJSONObject;
-                FRequestBody.ContentType := 'application/json';
+                LvApplicationNode := LvContent.GetValue(cJson_ApplicationJson) as TJSONObject;
+                FRequestBody.ContentType := cJson_ApplicationJson;
 
-                if Assigned(LvApplicationNode.FindValue('schema')) then
-                  if Assigned(LvApplicationNode.FindValue('schema').FindValue('example')) then
-                    FRequestBody.Example := LvApplicationNode.FindValue('schema').FindValue('example').Value;
+                if Assigned(LvApplicationNode.FindValue(cJson_Schema)) then
+                  if Assigned(LvApplicationNode.FindValue(cJson_Schema).FindValue(cJson_Example)) then
+                    FRequestBody.Example := LvApplicationNode.FindValue(cJson_Schema).FindValue(cJson_Example).Value;
 
-                if Assigned(LvApplicationNode.FindValue('schema').FindValue('properties')) then
+                if Assigned(LvApplicationNode.FindValue(cJson_Schema).FindValue(cJson_Properties)) then
                 begin
-                  if LvApplicationNode.FindValue('schema').FindValue('properties') is TJSONObject then
+                  if LvApplicationNode.FindValue(cJson_Schema).FindValue(cJson_Properties) is TJSONObject then
                   begin
-                    LvProperties := LvApplicationNode.FindValue('schema').FindValue('properties') as TJSONObject;
+                    LvProperties := LvApplicationNode.FindValue(cJson_Schema).FindValue(cJson_Properties) as TJSONObject;
                     if Assigned(LvProperties) then
                     begin
                       for j := 0 to LvProperties.Count - 1 do
@@ -170,23 +173,23 @@ begin
               end;
             end;
 
-            if Assigned(LvContent.FindValue('application/x-www-form-urlencoded')) then
+            if Assigned(LvContent.FindValue(cJson_ApplicationFormUrlencoded)) then
             begin
-              if LvContent.FindValue('application/x-www-form-urlencoded') is TJSONObject then
+              if LvContent.FindValue(cJson_ApplicationFormUrlencoded) is TJSONObject then
               begin
-                LvApplicationNode := LvContent.FindValue('application/x-www-form-urlencoded') as TJSONObject;
-                FRequestBody.ContentType := 'application/x-www-form-urlencoded';
-
-                if Assigned(LvApplicationNode.FindValue('schema')) then
+                LvApplicationNode := LvContent.FindValue(cJson_ApplicationFormUrlencoded) as TJSONObject;
+                FRequestBody.ContentType := cJson_ApplicationFormUrlencoded;
+                LvSchema := nil;
+                if Assigned(LvApplicationNode.FindValue(cJson_Schema)) then
                 begin
-                  LvSchema := LvApplicationNode.GetValue('schema') as TJSONObject;
-                  if Assigned(LvSchema.FindValue('example')) then
-                    FRequestBody.Example := LvSchema.FindValue('example').Value;
+                  LvSchema := LvApplicationNode.GetValue(cJson_Schema) as TJSONObject;
+                  if Assigned(LvSchema.FindValue(cJson_Example)) then
+                    FRequestBody.Example := LvSchema.FindValue(cJson_Example).Value;
                 end;
 
-                if Assigned(LvSchema.FindValue('properties')) then
+                if Assigned(LvSchema.FindValue(cJson_Properties)) then
                 begin
-                  LvProperties := LvSchema.FindValue('properties') as TJSONObject;
+                  LvProperties := LvSchema.FindValue(cJson_Properties) as TJSONObject;
                   for j := 0 to Pred(LvProperties.Count) do
                   begin
                     LvProperty := LvProperties.Pairs[J];
@@ -200,7 +203,7 @@ begin
         end;
       end;
 
-      if LvParam.JsonString.Value.ToLower.Equals('parameters') then
+      if LvParam.JsonString.Value.ToLower.Equals(cJson_Parameters) then
       begin
         if Assigned(LvParam.JsonValue) then
         begin
@@ -210,44 +213,50 @@ begin
             begin
               with (LvParamArray.Items[J] as TJSONObject) do
               begin
-                LvIn := '';
-                LvDescription := '';
-                LvType := '';
+                LvIn := EmptyStr;
+                LvDescription := EmptyStr;
+                LvType := EmptyStr;
                 LvRequired := False;
 
                 try
-                  if Assigned(FindValue('name')) then
-                    LvName := GetValue('name').Value;
+                  if Assigned(FindValue(cJson_name)) then
+                    LvName := GetValue(cJson_name).Value;
 
-                  if Assigned(FindValue('in')) then
-                    LvIn := GetValue('in').Value;
+                  if Assigned(FindValue(cJson_In)) then
+                    LvIn := GetValue(cJson_In).Value;
 
-                  if Assigned(FindValue('description')) then
-                    LvDescription := GetValue('description').Value;
+                  if Assigned(FindValue(cJson_Description)) then
+                    LvDescription := GetValue(cJson_Description).Value;
 
-                  if Assigned(FindValue('schema')) then
+                  if Assigned(FindValue(cJson_Schema)) then
                   begin
-                    if Assigned((GetValue('schema') as TJSONObject).FindValue('type')) then
-                      LvType := (GetValue('schema') as TJSONObject).GetValue('type').Value;
+                    if Assigned((GetValue(cJson_Schema) as TJSONObject).FindValue(cJson_type)) then
+                      LvType := (GetValue(cJson_Schema) as TJSONObject).GetValue(cJson_type).Value;
                   end
                   else
                   begin
-                    if Assigned(FindValue('type')) then
-                      LvType := GetValue('type').Value;
+                    if Assigned(FindValue(cJson_type)) then
+                      LvType := GetValue(cJson_type).Value;
                   end;
 
-                  if Assigned(FindValue('required')) then
-                    LvRequired := GetValue('required').AsType<Boolean>;
+                  if Assigned(FindValue(cJson_Required)) then
+                    LvRequired := GetValue(cJson_Required).AsType<Boolean>;
 
                   LvParameter := TParameter.Create(LvName, LvIn, LvDescription, LvType, LvRequired);
                 except on E: Exception do
-                  {$IFDEF CODESITE}
-                  CodeSite.Send('Parameter Creation Error: ' + E.Message);
-                  {$ELSE}
-                    raise Exception.Create('Parameter Creation Error: ' + E.Message);
-                  {$ENDIF}
+                  begin
+                    LvParameter := nil;
+                    MarkObjectUsed(LvParameter);
+                    {$IFDEF CODESITE}
+                    CodeSite.Send('Parameter Creation Error: ' + E.Message);
+                    {$ELSE}
+                      raise Exception.Create('Parameter Creation Error: ' + E.Message);
+                    {$ENDIF}
+                  end;
                 end;
-                FParams.AddEx(LvParameter);
+
+                if Assigned(LvParameter) then
+                  FParams.AddEx(LvParameter);
               end;
             end;
           end;
@@ -278,33 +287,33 @@ begin
 
   for I := 0 to Pred(AYamlNode.Count) do
   begin
-    if AYamlNode.Elements[I].Key.ToString.ToLower.Equals('requestbody') then //mapping
+    if AYamlNode.Elements[I].Key.ToString.ToLower.Equals(cJson_RequestBody) then //mapping
     begin
       LvYamlRequestBody := AYamlNode.Elements[I].Value;
       for J := 0 to Pred(LvYamlRequestBody.Count) do
       begin
-        if LvYamlRequestBody.Elements[J].Key.ToString.ToLower.Equals('description') then
+        if LvYamlRequestBody.Elements[J].Key.ToString.ToLower.Equals(cJson_Description) then
           FRequestBody.Description := LvYamlRequestBody.Elements[J].Value.ToString;
 
-        if LvYamlRequestBody.Elements[J].Key.ToString.ToLower.Equals('required') then
+        if LvYamlRequestBody.Elements[J].Key.ToString.ToLower.Equals(cJson_Required) then
           FRequestBody.Required := LvYamlRequestBody.Elements[J].Value.ToBoolean;
 
-        if LvYamlRequestBody.Elements[J].Key.ToString.ToLower.Equals('content') then
+        if LvYamlRequestBody.Elements[J].Key.ToString.ToLower.Equals(cJson_Content) then
         begin
           LvYamlContent := LvYamlRequestBody.Elements[J].Value;
 
-          if (LvYamlContent.Elements[0].Key.ToString.ToLower.Equals('application/json')) or
-          (LvYamlContent.Elements[0].Key.ToString.ToLower.Equals('application/x-www-form-urlencoded')) then
+          if (LvYamlContent.Elements[0].Key.ToString.ToLower.Equals(cJson_ApplicationJson)) or
+             (LvYamlContent.Elements[0].Key.ToString.ToLower.Equals(cJson_ApplicationFormUrlencoded)) then
           begin
             FRequestBody.ContentType := LvYamlContent.Elements[0].Key.ToString;
             LvYamlSchema := LvYamlContent.Elements[0].Value.Elements[0].Value;
 
             for K := 0 to Pred(LvYamlSchema.Count) do
             begin
-              if LvYamlSchema.Elements[K].Key.ToString.ToLower.Equals('example') then
+              if LvYamlSchema.Elements[K].Key.ToString.ToLower.Equals(cJson_Example) then
                 FRequestBody.Example :=  LvYamlSchema.Elements[K].Value.ToString;
 
-              if LvYamlSchema.Elements[K].Key.ToString.ToLower.Equals('properties') then
+              if LvYamlSchema.Elements[K].Key.ToString.ToLower.Equals(cJson_Properties) then
               begin
                 LvYamlProperties := LvYamlSchema.Elements[K].Value;
 
@@ -325,16 +334,16 @@ begin
       end;
     end;
 
-    if AYamlNode.Elements[I].Key.ToString.ToLower.Equals('summary') then  //scalar
+    if AYamlNode.Elements[I].Key.ToString.ToLower.Equals(cJson_summary) then  //scalar
       FMethodSummary := AYamlNode.Elements[I].Value.ToString;
 
-    if AYamlNode.Elements[I].Key.ToString.ToLower.Equals('description') then //scalar
+    if AYamlNode.Elements[I].Key.ToString.ToLower.Equals(cJson_Description) then //scalar
       FMethodDescription := AYamlNode.Elements[I].Value.ToString;
 
-    if AYamlNode.Elements[I].Key.ToString.ToLower.Equals('operationid') then //scalar
+    if AYamlNode.Elements[I].Key.ToString.ToLower.Equals(cJson_Operationid) then //scalar
       FMethodName := AYamlNode.Elements[I].Value.ToString;
 
-    if AYamlNode.Elements[I].Key.ToString.ToLower.Equals('parameters') then //sequesnce
+    if AYamlNode.Elements[I].Key.ToString.ToLower.Equals(cJson_Parameters) then //sequesnce
     begin
       FParams := TObjectList<TParameter>.Create;
 
@@ -344,7 +353,7 @@ begin
       begin
         for K := 0 to Pred(LvYamlParamList.Nodes[J].Count) do
         begin
-           case IndexStr(LvYamlParamList.Nodes[J].Elements[K].Key.ToString.ToLower, ['name', 'in', 'description', 'schema', 'type', 'required']) of
+           case IndexStr(LvYamlParamList.Nodes[J].Elements[K].Key.ToString.ToLower, [cJson_name, cJson_In, cJson_Description, cJson_Schema, cJson_type, cJson_Required]) of
              0: LvName := LvYamlParamList.Nodes[J].Elements[K].Value.ToString;
              1: LvIn := LvYamlParamList.Nodes[J].Elements[K].Value.ToString;
              2: LvDescription := LvYamlParamList.Nodes[J].Elements[K].Value.ToString;
@@ -402,16 +411,16 @@ begin
 
           for I := 0 to Pred(LvQueryParams.Count) do
           begin
-            LvIn := 'query';
+            LvIn := cPostman_Query;
 
-            if Assigned(LvQueryParams.Items[I].FindValue('key')) then
-              LvName := LvQueryParams.Items[I].FindValue('key').Value; //param name
+            if Assigned(LvQueryParams.Items[I].FindValue(cPostman_Key)) then
+              LvName := LvQueryParams.Items[I].FindValue(cPostman_Key).Value; //param name
 
-            if Assigned(LvQueryParams.Items[I].FindValue('value')) then
-              LvType := LvQueryParams.Items[I].FindValue('value').Value; //param type
+            if Assigned(LvQueryParams.Items[I].FindValue(cPostman_Value)) then
+              LvType := LvQueryParams.Items[I].FindValue(cPostman_Value).Value; //param type
 
-            if Assigned(LvQueryParams.Items[I].FindValue('description')) then
-              LvDescription := LvQueryParams.Items[I].FindValue('description').Value; //param description
+            if Assigned(LvQueryParams.Items[I].FindValue(cPostman_Description)) then
+              LvDescription := LvQueryParams.Items[I].FindValue(cPostman_Description).Value; //param description
 
             LvRequired := False; //TODO
             LvParameter := TParameter.Create(LvName, LvIn, LvDescription, LvType, LvRequired);
@@ -431,15 +440,15 @@ begin
 
           for I := 0 to Pred(LvInPathParams.Count) do
           begin
-            LvIn := 'query';
-            if Assigned(LvInPathParams.Items[I].FindValue('key')) then
-              LvName := LvInPathParams.Items[I].FindValue('key').Value; //param name
+            LvIn := cPostman_Query;
+            if Assigned(LvInPathParams.Items[I].FindValue(cPostman_Key)) then
+              LvName := LvInPathParams.Items[I].FindValue(cPostman_Key).Value; //param name
 
-            if Assigned(LvInPathParams.Items[I].FindValue('value')) then
-              LvType := LvInPathParams.Items[I].FindValue('value').Value; //param type
+            if Assigned(LvInPathParams.Items[I].FindValue(cPostman_Value)) then
+              LvType := LvInPathParams.Items[I].FindValue(cPostman_Value).Value; //param type
 
-            if Assigned(LvInPathParams.Items[I].FindValue('description')) then
-              LvDescription := LvInPathParams.Items[I].FindValue('description').Value; //param description
+            if Assigned(LvInPathParams.Items[I].FindValue(cPostman_Description)) then
+              LvDescription := LvInPathParams.Items[I].FindValue(cPostman_Description).Value; //param description
 
             LvRequired := False; //TODO
 
@@ -465,7 +474,7 @@ begin
     for I := 0 to LvJsonParams.Count - 1 do
     begin
       LvJsonParam := LvJsonParams.Pairs[I];
-      if LvJsonParam.JsonString.Value.ToLower.Equals('operationid') then
+      if LvJsonParam.JsonString.Value.ToLower.Equals(cJson_Operationid) then
       begin
         Result := RemoveDelphiReservedChars(LvJsonParam.JsonValue.Value);
         Break;
@@ -477,7 +486,7 @@ begin
       for I := 0 to LvJsonParams.Count - 1 do
       begin
         LvJsonParam := LvJsonParams.Pairs[I];
-        if LvJsonParam.JsonString.Value.ToLower.Equals('summary') then
+        if LvJsonParam.JsonString.Value.ToLower.Equals(cJson_Summary) then
         begin
           Result := RemoveDelphiReservedChars(RemoveDelphiReservedChars(LvJsonParam.JsonValue.Value));
           Break;
@@ -545,17 +554,23 @@ end;
 
 constructor TParameter.Create(AName, AIn, ADescription, ADataType: string; ARequired: Boolean);
 begin
-  FName := AName;
+  FName := CleanName(AName);
+  FOriginalname := AName;
   FIn := AIn;
   FDescription := ADescription;
   FRequired := ARequired;
   FDataType := CLeanDataType(ADataType);
 end;
 
+function TParameter.CleanName(const AName: string): string;
+begin
+  Result := StringReplace(AName, '-', '_', [rfReplaceAll]);
+end;
+
 function TParameter.CLeanDataType(ARawDataType: string): string;
 begin
-  Result := StringReplace(ARawDataType, '<', '', []);
-  Result := StringReplace(Result, '>', '', []);
+  Result := StringReplace(ARawDataType, '<', EmptyStr, []);
+  Result := StringReplace(Result, '>', EmptyStr, []);
 
   if IndexStr(Result.ToLower, ['string', 'integer', 'boolean', 'number', 'float', 'array', 'object']) = -1 then
   begin
@@ -565,7 +580,7 @@ begin
     Result := 'variant';
   end;
 
-  if Result.Trim = '' then
+  if Result.Trim.Equals(EmptyStr) then
   begin
   {$IFDEF CODESITE}
     //CodeSite.Send('Empty DataType Changed to Variant!');
