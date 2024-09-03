@@ -64,7 +64,9 @@ As Delphi developers, we often face the challenge of implementing REST API clien
 
 ## Support
 
-If you find OpenAPIClientWizard useful, please give it a **star**. Your support is greatly appreciated!
+If you find OpenAPIClientWizard useful, please give it a **star**.
+
+Your support is greatly appreciated!
 
 You can also support my work by buying me a coffee. This helps me continue developing this plugin and other tools like [ChatGPTWizard](https://github.com/AliDehbansiahkarbon/ChatGPTWizard) and [EasyDBMigrator](https://github.com/AliDehbansiahkarbon/EasyDBMigrator).
 
@@ -76,14 +78,25 @@ OpenAPIClientWizard is provided as is. If you need any specific implementation c
 
 ## Contributing
 
-Contributions are welcome! If you have suggestions for improvements or find any issues, please open an issue or submit a pull request.
+Contributions are welcome! 
+If you have suggestions for improvements or find any issues, please open an issue or submit a pull request.
 
 ## License
-This project is licensed under the MIT License. See the LICENSE file for details.
+This project is licensed under the MIT License. 
+See the LICENSE file for details.
+
+## Dependencies
+This plugin utilizes the Neslib library to parse Yaml format, which is included in the repository for convenience. 
+
+No action is required on your part. 
+
+However, you can find the latest source [here](https://github.com/neslib/Neslib.Json).
 
 ---
 
-Transform the way you develop REST API clients in Delphi with **OpenAPIClientWizard**. Download it today and streamline your workflow!
+Transform the way you develop REST API clients in Delphi with **OpenAPIClientWizard**. 
+
+Download it today and streamline your workflow!
 
 <hr>
 <p align="center">
