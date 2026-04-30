@@ -10,7 +10,7 @@ interface
 uses
   System.Classes, System.SysUtils, VCL.Dialogs, System.Net.URLClient, System.Net.HttpClient,
   System.Net.HttpClientComponent, System.NetEncoding, Rest.Json, System.JSON, System.StrUtils,
-  System.Generics.Collections, Neslib.Yaml, System.Rtti,
+  System.Generics.Collections, Neslib.Yaml, Neslib.Utf8, System.Rtti,
   OCW.Util.Core,
   OCW.Util.Consts;
 
@@ -175,7 +175,7 @@ begin
         atSwaggerJSON, atOpenAPiJson, atPostManCollection: AExtractedSpec.FinalJson := TJSONObject.ParseJSONValue(LvResponse);
 
         atOpenAPIYaml:
-          AExtractedSpec.FinalYaml := TYamlDocument.Load(TStringStream.Create(LvResponse));
+          AExtractedSpec.FinalYaml := TYamlDocument.Parse(LvResponse);
       end;
 
       if (Assigned(AExtractedSpec.FinalJson)) or (Assigned(AExtractedSpec.FinalYaml)) then
@@ -195,6 +195,14 @@ begin
   LvTempList := TStringList.Create;
   try
     try
+      if AActiveType = atOpenAPIYaml then
+      begin
+        AExtractedSpec.FinalObjectType := AActiveType;
+        AExtractedSpec.FinalYaml := TYamlDocument.Load(AFile);
+        Result := Assigned(AExtractedSpec.FinalYaml);
+        Exit;
+      end;
+
       LvTempList.LoadFromFile(AFile, TEncoding.UTF8);
       LvFileContent := LvTempList.Text.Trim;
 
@@ -204,8 +212,6 @@ begin
 
         case AActiveType of
           atSwaggerJSON, atOpenAPiJson, atPostManCollection: AExtractedSpec.FinalJson := TJSONObject.ParseJSONValue(LvFileContent);
-
-          atOpenAPIYaml: AExtractedSpec.FinalYaml := TYamlDocument.Load(TStringStream.Create(LvFileContent));
         end;
 
         if Assigned(AExtractedSpec.FinalJson) or Assigned(AExtractedSpec.FinalYaml) then

@@ -57,6 +57,7 @@ implementation
 constructor TSingletonSettingObj.Create;
 begin
  inherited;
+ FAuthType := 2;
  FOutputType := potSampleVCL;
 end;
 

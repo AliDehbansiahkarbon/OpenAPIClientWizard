@@ -141,6 +141,25 @@ begin
   Result := LvObject;
 end;
 
+function FindYamlChildByKey(AYamlNode: TYamlNode; const AKey: string; out AValue: TYamlNode): Boolean;
+var
+  I: Integer;
+begin
+  Result := False;
+  AValue := Default(TYamlNode);
+  if AYamlNode.IsNil or not AYamlNode.IsMapping then
+    Exit;
+
+  for I := 0 to Pred(AYamlNode.Count) do
+  begin
+    if AYamlNode.Elements[I].Key.ToString.ToLower.Equals(AKey.ToLower) then
+    begin
+      AValue := AYamlNode.Elements[I].Value;
+      Exit(True);
+    end;
+  end;
+end;
+
 constructor TMethodObject.CreateJson(AJsonMethod: TJSONPair);
 var
   LvParam: TJSONPair;
@@ -240,6 +259,34 @@ begin
                 end;
               end;
             end;
+
+            if Assigned(LvContent.FindValue(cJson_MultipartFormData)) then
+            begin
+              if LvContent.FindValue(cJson_MultipartFormData) is TJSONObject then
+              begin
+                LvApplicationNode := LvContent.FindValue(cJson_MultipartFormData) as TJSONObject;
+                FRequestBody.ContentType := cJson_MultipartFormData;
+                LvSchema := nil;
+                if Assigned(LvApplicationNode.FindValue(cJson_Schema)) then
+                begin
+                  LvSchema := LvApplicationNode.GetValue(cJson_Schema) as TJSONObject;
+                  FRequestBody.SchemaJson := LvSchema.ToJSON;
+                  if Assigned(LvSchema.FindValue(cJson_Example)) then
+                    FRequestBody.Example := LvSchema.FindValue(cJson_Example).Value;
+                end;
+
+                if Assigned(LvSchema) and Assigned(LvSchema.FindValue(cJson_Properties)) then
+                begin
+                  LvProperties := LvSchema.FindValue(cJson_Properties) as TJSONObject;
+                  for j := 0 to Pred(LvProperties.Count) do
+                  begin
+                    LvProperty := LvProperties.Pairs[J];
+                    if Assigned(LvProperty) then
+                      FRequestBody.Properties.Add(LvProperty.JsonString.Value{prop name}, SchemaDataType(LvProperty.JsonValue){prop type});
+                  end;
+                end;
+              end;
+            end;
           end;
         end;
       end;
@@ -263,9 +310,11 @@ var
   LvYamlParamList: TYamlNode;
   LvYamlRequestBody: TYamlNode;
   LvYamlContent: TYamlNode;
+  LvYamlMediaNode: TYamlNode;
   LvYamlSchema: TYamlNode;
   LvYamlProperties: TYamlNode;
   LvSchemaJsonValue: TJSONValue;
+  LvContentType: string;
   L: Integer;
 begin
   FRequestBody := TRequestBody.Create;
@@ -288,12 +337,18 @@ begin
         if LvYamlRequestBody.Elements[J].Key.ToString.ToLower.Equals(cJson_Content) then
         begin
           LvYamlContent := LvYamlRequestBody.Elements[J].Value;
+          LvContentType := EmptyStr;
 
-          if (LvYamlContent.Elements[0].Key.ToString.ToLower.Equals(cJson_ApplicationJson)) or
-             (LvYamlContent.Elements[0].Key.ToString.ToLower.Equals(cJson_ApplicationFormUrlencoded)) then
+          if FindYamlChildByKey(LvYamlContent, cJson_ApplicationJson, LvYamlMediaNode) then
+            LvContentType := cJson_ApplicationJson
+          else if FindYamlChildByKey(LvYamlContent, cJson_ApplicationFormUrlencoded, LvYamlMediaNode) then
+            LvContentType := cJson_ApplicationFormUrlencoded
+          else if FindYamlChildByKey(LvYamlContent, cJson_MultipartFormData, LvYamlMediaNode) then
+            LvContentType := cJson_MultipartFormData;
+
+          if (not LvContentType.IsEmpty) and FindYamlChildByKey(LvYamlMediaNode, cJson_Schema, LvYamlSchema) then
           begin
-            FRequestBody.ContentType := LvYamlContent.Elements[0].Key.ToString;
-            LvYamlSchema := LvYamlContent.Elements[0].Value.Elements[0].Value;
+            FRequestBody.ContentType := LvContentType;
             LvSchemaJsonValue := YamlNodeToJsonValue(LvYamlSchema);
             try
               FRequestBody.SchemaJson := LvSchemaJsonValue.ToJSON;

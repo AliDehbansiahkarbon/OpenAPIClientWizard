@@ -52,6 +52,7 @@ implementation
 uses
   {$IFDEF CODESITE}CodeSiteLogging,{$ENDIF}
   VCL.Dialogs,
+  Neslib.Yaml,
   OCW.CodeGen.Templates,
   OCW.CodeGen.SourceFile;
 
@@ -59,7 +60,7 @@ uses
 
 function TNewModelUnitEx.ConvertAuthenticationType(AAuthType: Byte): string;
 begin
-  Result := 'No Auth';
+  Result := 'bearer';
   case AAuthType of
     0: Result := 'No Auth';
     1: Result := 'basic';
@@ -310,7 +311,11 @@ begin
     LvFullParamList := LvAddressExpression + IfThen(LvQueryParams.Trim.IsEmpty, EmptyStr, ' + ' + LvQueryParams);
 
     if HasRequestBody(AMethodObj) then
+    begin
+      if not AMethodObj.RequestBody.ContentType.Trim.IsEmpty then
+        LvOptionalStatements := LvOptionalStatements + '    LvStruct.ContentType := ' + QuotedStr(AMethodObj.RequestBody.ContentType) + ';' + sLineBreak;
       LvOptionalStatements := LvOptionalStatements + '    LvStruct.RequestObject := ARequestObj;' + sLineBreak;
+    end;
 
     if LvHeaderParams.Count > 0 then
       LvOptionalStatements := LvOptionalStatements + '    LvStruct.CustomHeadersCount := ' + LvHeaderParams.Count.ToString + ';' + sLineBreak;
@@ -520,12 +525,250 @@ begin
   Result := AClassName + '.Create';
 end;
 
+function CloneJsonValue(AJsonValue: TJSONValue): TJSONValue;
+begin
+  Result := nil;
+  if Assigned(AJsonValue) then
+    Result := TJSONObject.ParseJSONValue(AJsonValue.ToJSON);
+end;
+
+function CloneJsonObject(AJsonObject: TJSONObject): TJSONObject;
+var
+  LvValue: TJSONValue;
+begin
+  Result := nil;
+  LvValue := CloneJsonValue(AJsonObject);
+  if LvValue is TJSONObject then
+    Result := LvValue as TJSONObject
+  else
+    LvValue.Free;
+end;
+
+function JsonPairCloneValue(AJsonValue: TJSONValue): TJSONValue;
+begin
+  Result := CloneJsonValue(AJsonValue);
+  if not Assigned(Result) then
+    Result := TJSONString.Create(EmptyStr);
+end;
+
+function CodeGenYamlNodeToJsonValue(AYamlNode: TYamlNode): TJSONValue;
+var
+  I: Integer;
+  LvObject: TJSONObject;
+  LvArray: TJSONArray;
+begin
+  if AYamlNode.IsNil then
+    Exit(TJSONString.Create(EmptyStr));
+
+  if AYamlNode.IsScalar then
+    Exit(TJSONString.Create(AYamlNode.ToString));
+
+  if AYamlNode.IsSequence then
+  begin
+    LvArray := TJSONArray.Create;
+    for I := 0 to Pred(AYamlNode.Count) do
+      LvArray.AddElement(CodeGenYamlNodeToJsonValue(AYamlNode.Nodes[I]));
+
+    Exit(LvArray);
+  end;
+
+  LvObject := TJSONObject.Create;
+  for I := 0 to Pred(AYamlNode.Count) do
+    LvObject.AddPair(AYamlNode.Elements[I].Key.ToString, CodeGenYamlNodeToJsonValue(AYamlNode.Elements[I].Value));
+
+  Result := LvObject;
+end;
+
+function FindYamlChildByKey(AYamlNode: TYamlNode; const AKey: string; out AValue: TYamlNode): Boolean;
+var
+  I: Integer;
+begin
+  Result := False;
+  AValue := Default(TYamlNode);
+  if AYamlNode.IsNil or not AYamlNode.IsMapping then
+    Exit;
+
+  for I := 0 to Pred(AYamlNode.Count) do
+  begin
+    if AYamlNode.Elements[I].Key.ToString.Equals(AKey) then
+    begin
+      AValue := AYamlNode.Elements[I].Value;
+      Exit(True);
+    end;
+  end;
+end;
+
+function DecodeJsonPointerPart(const AValue: string): string;
+begin
+  Result := StringReplace(AValue, '~1', '/', [rfReplaceAll]);
+  Result := StringReplace(Result, '~0', '~', [rfReplaceAll]);
+end;
+
+function ResolveSchemaRef(const ARef: string): TJSONObject;
+var
+  LvJsonValue: TJSONValue;
+  LvPath: string;
+  LvParts: TArray<string>;
+  LvPart: string;
+  LvDecodedPart: string;
+  LvYamlNode: TYamlNode;
+  LvYamlChild: TYamlNode;
+  I: Integer;
+begin
+  Result := nil;
+  if not ARef.StartsWith('#/') then
+    Exit;
+
+  LvPath := Copy(ARef, 3, MaxInt);
+  LvParts := LvPath.Split(['/']);
+
+  if Assigned(TFinalParsingObject.FinalJson) and (TFinalParsingObject.FinalJson is TJSONObject) then
+  begin
+    LvJsonValue := TFinalParsingObject.FinalJson as TJSONObject;
+    for LvPart in LvParts do
+    begin
+      LvDecodedPart := DecodeJsonPointerPart(LvPart);
+      if not (LvJsonValue is TJSONObject) then
+        Exit;
+
+      LvJsonValue := (LvJsonValue as TJSONObject).FindValue(LvDecodedPart);
+      if not Assigned(LvJsonValue) then
+        Exit;
+    end;
+
+    if LvJsonValue is TJSONObject then
+      Result := CloneJsonObject(LvJsonValue as TJSONObject);
+
+    Exit;
+  end;
+
+  if Assigned(TFinalParsingObject.FinalYaml) then
+  begin
+    LvYamlNode := TFinalParsingObject.FinalYaml.Root;
+    for I := Low(LvParts) to High(LvParts) do
+    begin
+      if not FindYamlChildByKey(LvYamlNode, DecodeJsonPointerPart(LvParts[I]), LvYamlChild) then
+        Exit;
+
+      LvYamlNode := LvYamlChild;
+    end;
+
+    LvJsonValue := CodeGenYamlNodeToJsonValue(LvYamlNode);
+    if LvJsonValue is TJSONObject then
+      Result := LvJsonValue as TJSONObject
+    else
+      LvJsonValue.Free;
+  end;
+end;
+
+function RefClassName(const ARef: string): string;
+var
+  LvName: string;
+  LvSlashPos: Integer;
+begin
+  LvName := ARef;
+  LvSlashPos := LastDelimiter('/', LvName);
+  if LvSlashPos > 0 then
+    LvName := Copy(LvName, LvSlashPos + 1, MaxInt);
+
+  Result := DelphiClassName(DecodeJsonPointerPart(LvName));
+end;
+
+function AddOrGetPropertiesObject(AJsonObject: TJSONObject): TJSONObject;
+begin
+  if AJsonObject.FindValue('properties') is TJSONObject then
+    Result := AJsonObject.FindValue('properties') as TJSONObject
+  else
+  begin
+    Result := TJSONObject.Create;
+    AJsonObject.AddPair('properties', Result);
+  end;
+end;
+
+function BuildEffectiveSchema(AJsonObject: TJSONObject): TJSONObject;
+var
+  LvRefValue: TJSONValue;
+  LvComposedArray: TJSONArray;
+  LvEffectivePart: TJSONObject;
+  LvMergedProperties: TJSONObject;
+  LvPartProperties: TJSONObject;
+  LvProperty: TJSONPair;
+  I, J: Integer;
+begin
+  Result := nil;
+  if not Assigned(AJsonObject) then
+    Exit;
+
+  LvRefValue := AJsonObject.FindValue('$ref');
+  if Assigned(LvRefValue) then
+  begin
+    Result := ResolveSchemaRef(LvRefValue.Value);
+    if Assigned(Result) then
+      Exit;
+  end;
+
+  if AJsonObject.FindValue('allOf') is TJSONArray then
+  begin
+    Result := TJSONObject.Create;
+    Result.AddPair('type', 'object');
+    LvMergedProperties := AddOrGetPropertiesObject(Result);
+    LvComposedArray := AJsonObject.FindValue('allOf') as TJSONArray;
+    for I := 0 to Pred(LvComposedArray.Count) do
+    begin
+      if not (LvComposedArray.Items[I] is TJSONObject) then
+        Continue;
+
+      LvEffectivePart := BuildEffectiveSchema(LvComposedArray.Items[I] as TJSONObject);
+      try
+        if Assigned(LvEffectivePart) and (LvEffectivePart.FindValue('properties') is TJSONObject) then
+        begin
+          LvPartProperties := LvEffectivePart.FindValue('properties') as TJSONObject;
+          for J := 0 to Pred(LvPartProperties.Count) do
+          begin
+            LvProperty := LvPartProperties.Pairs[J];
+            if not Assigned(LvMergedProperties.FindValue(LvProperty.JsonString.Value)) then
+              LvMergedProperties.AddPair(LvProperty.JsonString.Value, JsonPairCloneValue(LvProperty.JsonValue));
+          end;
+        end;
+      finally
+        LvEffectivePart.Free;
+      end;
+    end;
+    Exit;
+  end;
+
+  if AJsonObject.FindValue('oneOf') is TJSONArray then
+  begin
+    LvComposedArray := AJsonObject.FindValue('oneOf') as TJSONArray;
+    if (LvComposedArray.Count > 0) and (LvComposedArray.Items[0] is TJSONObject) then
+    begin
+      Result := BuildEffectiveSchema(LvComposedArray.Items[0] as TJSONObject);
+      if Assigned(Result) then
+        Exit;
+    end;
+  end;
+
+  if AJsonObject.FindValue('anyOf') is TJSONArray then
+  begin
+    LvComposedArray := AJsonObject.FindValue('anyOf') as TJSONArray;
+    if (LvComposedArray.Count > 0) and (LvComposedArray.Items[0] is TJSONObject) then
+    begin
+      Result := BuildEffectiveSchema(LvComposedArray.Items[0] as TJSONObject);
+      if Assigned(Result) then
+        Exit;
+    end;
+  end;
+
+  Result := CloneJsonObject(AJsonObject);
+end;
+
 procedure BuildClassFromJsonExample(const AClassName: string; AJsonObject: TJSONObject; ADefinitions, AImplementations: TStringBuilder; AKnownClasses: TDictionary<string, Boolean>); forward;
 procedure BuildClassFromJsonSchema(const AClassName: string; ASchemaObject: TJSONObject; ADefinitions, AImplementations: TStringBuilder; AKnownClasses: TDictionary<string, Boolean>); forward;
 
 function SchemaFieldType(const AOwnerClass, APropertyName: string; ASchemaValue: TJSONValue; ADefinitions, AImplementations: TStringBuilder; AKnownClasses: TDictionary<string, Boolean>; AOwnedObjects: TStrings): string;
 var
   LvSchema: TJSONObject;
+  LvEffectiveSchema: TJSONObject;
   LvItems: TJSONValue;
   LvType: string;
   LvFormat: string;
@@ -535,45 +778,65 @@ begin
   if not (ASchemaValue is TJSONObject) then
     Exit;
 
-  LvSchema := ASchemaValue as TJSONObject;
-  LvType := EmptyStr;
-  LvFormat := EmptyStr;
-  if Assigned(LvSchema.FindValue('type')) then
-    LvType := LvSchema.GetValue('type').Value.ToLower;
-  if Assigned(LvSchema.FindValue('format')) then
-    LvFormat := LvSchema.GetValue('format').Value.ToLower;
+  LvEffectiveSchema := BuildEffectiveSchema(ASchemaValue as TJSONObject);
+  try
+    if Assigned(LvEffectiveSchema) then
+      LvSchema := LvEffectiveSchema
+    else
+      LvSchema := ASchemaValue as TJSONObject;
 
-  if LvType.Equals('array') then
-  begin
-    Result := 'TArray<string>';
-    LvItems := LvSchema.FindValue('items');
-    if LvItems is TJSONObject then
+    if Assigned((ASchemaValue as TJSONObject).FindValue('$ref')) then
+      LvChildClassName := RefClassName((ASchemaValue as TJSONObject).GetValue('$ref').Value)
+    else
+      LvChildClassName := AOwnerClass + DelphiPropertyName(APropertyName);
+
+    LvType := EmptyStr;
+    LvFormat := EmptyStr;
+    if Assigned(LvSchema.FindValue('type')) then
+      LvType := LvSchema.GetValue('type').Value.ToLower;
+    if Assigned(LvSchema.FindValue('format')) then
+      LvFormat := LvSchema.GetValue('format').Value.ToLower;
+
+    if LvType.Equals('array') then
     begin
-      if Assigned((LvItems as TJSONObject).FindValue('properties')) or
-         (Assigned((LvItems as TJSONObject).FindValue('type')) and ((LvItems as TJSONObject).GetValue('type').Value.ToLower = 'object')) then
+      Result := 'TArray<string>';
+      LvItems := LvSchema.FindValue('items');
+      if LvItems is TJSONObject then
       begin
-        LvChildClassName := AOwnerClass + DelphiPropertyName(APropertyName) + 'Item';
-        BuildClassFromJsonSchema(LvChildClassName, LvItems as TJSONObject, ADefinitions, AImplementations, AKnownClasses);
-        Result := 'TArray<' + LvChildClassName + '>';
-      end
-      else if Assigned((LvItems as TJSONObject).FindValue('type')) then
-        Result := 'TArray<' + SchemaPrimitiveType((LvItems as TJSONObject).GetValue('type').Value.ToLower, '') + '>';
+        if Assigned((LvItems as TJSONObject).FindValue('$ref')) then
+        begin
+          LvChildClassName := RefClassName((LvItems as TJSONObject).GetValue('$ref').Value);
+          BuildClassFromJsonSchema(LvChildClassName, LvItems as TJSONObject, ADefinitions, AImplementations, AKnownClasses);
+          Result := 'TArray<' + LvChildClassName + '>';
+        end
+        else if Assigned((LvItems as TJSONObject).FindValue('properties')) or
+                (Assigned((LvItems as TJSONObject).FindValue('type')) and ((LvItems as TJSONObject).GetValue('type').Value.ToLower = 'object')) or
+                Assigned((LvItems as TJSONObject).FindValue('oneOf')) or
+                Assigned((LvItems as TJSONObject).FindValue('anyOf')) or
+                Assigned((LvItems as TJSONObject).FindValue('allOf')) then
+        begin
+          LvChildClassName := AOwnerClass + DelphiPropertyName(APropertyName) + 'Item';
+          BuildClassFromJsonSchema(LvChildClassName, LvItems as TJSONObject, ADefinitions, AImplementations, AKnownClasses);
+          Result := 'TArray<' + LvChildClassName + '>';
+        end
+        else if Assigned((LvItems as TJSONObject).FindValue('type')) then
+          Result := 'TArray<' + SchemaPrimitiveType((LvItems as TJSONObject).GetValue('type').Value.ToLower, '') + '>';
+      end;
+      Exit;
     end;
-    Exit;
+
+    if Assigned(LvSchema.FindValue('properties')) or LvType.Equals('object') or
+       Assigned(LvSchema.FindValue('oneOf')) or Assigned(LvSchema.FindValue('anyOf')) or Assigned(LvSchema.FindValue('allOf')) then
+    begin
+      BuildClassFromJsonSchema(LvChildClassName, LvSchema, ADefinitions, AImplementations, AKnownClasses);
+      AOwnedObjects.Add(DelphiPropertyName(APropertyName) + '=' + LvChildClassName);
+      Exit(LvChildClassName);
+    end;
+
+    Result := SchemaPrimitiveType(LvType, LvFormat);
+  finally
+    LvEffectiveSchema.Free;
   end;
-
-  if Assigned(LvSchema.FindValue('properties')) or LvType.Equals('object') then
-  begin
-    LvChildClassName := AOwnerClass + DelphiPropertyName(APropertyName);
-    BuildClassFromJsonSchema(LvChildClassName, LvSchema, ADefinitions, AImplementations, AKnownClasses);
-    AOwnedObjects.Add(DelphiPropertyName(APropertyName) + '=' + LvChildClassName);
-    Exit(LvChildClassName);
-  end;
-
-  if Assigned(LvSchema.FindValue('$ref')) then
-    Exit('TObject');
-
-  Result := SchemaPrimitiveType(LvType, LvFormat);
 end;
 
 function ExampleFieldType(const AOwnerClass, APropertyName: string; AJsonValue: TJSONValue; ADefinitions, AImplementations: TStringBuilder; AKnownClasses: TDictionary<string, Boolean>; AOwnedObjects: TStrings): string;
@@ -657,6 +920,8 @@ end;
 procedure BuildClassFromJsonSchema(const AClassName: string; ASchemaObject: TJSONObject; ADefinitions, AImplementations: TStringBuilder; AKnownClasses: TDictionary<string, Boolean>);
 var
   I: Integer;
+  LvEffectiveSchema: TJSONObject;
+  LvSchema: TJSONObject;
   LvProperties: TJSONObject;
   LvProperty: TJSONPair;
   LvPropName: string;
@@ -669,18 +934,36 @@ begin
     Exit;
 
   AKnownClasses.Add(AClassName, True);
+  LvEffectiveSchema := BuildEffectiveSchema(ASchemaObject);
   LvFields := TStringList.Create;
   LvPropertiesList := TStringList.Create;
   LvOwnedObjects := TStringList.Create;
   try
-    if ASchemaObject.FindValue('properties') is TJSONObject then
-      LvProperties := ASchemaObject.FindValue('properties') as TJSONObject
+    if Assigned(LvEffectiveSchema) then
+      LvSchema := LvEffectiveSchema
     else
-      LvProperties := ASchemaObject;
+      LvSchema := ASchemaObject;
+
+    if Assigned(LvSchema.FindValue('type')) and LvSchema.GetValue('type').Value.ToLower.Equals('array') then
+    begin
+      LvPropType := SchemaFieldType(AClassName, 'Items', LvSchema, ADefinitions, AImplementations, AKnownClasses, LvOwnedObjects);
+      LvFields.Add('FItems: ' + LvPropType + ';');
+      LvPropertiesList.Add('property Items: ' + LvPropType + ' read FItems write FItems;');
+      AppendClassCode(AClassName, LvFields, LvPropertiesList, LvOwnedObjects, ADefinitions, AImplementations);
+      Exit;
+    end;
+
+    if LvSchema.FindValue('properties') is TJSONObject then
+      LvProperties := LvSchema.FindValue('properties') as TJSONObject
+    else
+      LvProperties := LvSchema;
 
     for I := 0 to Pred(LvProperties.Count) do
     begin
       LvProperty := LvProperties.Pairs[I];
+      if IndexStr(LvProperty.JsonString.Value.ToLower, ['type', 'required', 'additionalproperties', 'description', 'example', 'examples', 'xml']) > -1 then
+        Continue;
+
       LvPropName := DelphiPropertyName(LvProperty.JsonString.Value);
       LvPropType := SchemaFieldType(AClassName, LvProperty.JsonString.Value, LvProperty.JsonValue, ADefinitions, AImplementations, AKnownClasses, LvOwnedObjects);
       LvFields.Add('F' + LvPropName + ': ' + LvPropType + ';');
@@ -689,6 +972,7 @@ begin
 
     AppendClassCode(AClassName, LvFields, LvPropertiesList, LvOwnedObjects, ADefinitions, AImplementations);
   finally
+    LvEffectiveSchema.Free;
     LvFields.Free;
     LvPropertiesList.Free;
     LvOwnedObjects.Free;

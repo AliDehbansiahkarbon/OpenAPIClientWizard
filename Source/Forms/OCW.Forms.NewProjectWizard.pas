@@ -183,7 +183,7 @@ begin
         UserName := EmptyStr;
         Password := EmptyStr;
         Version := cbb_Version.ItemIndex;
-        AuthType := 0;
+        AuthType := 2;
         BooleanStringForm := cbb_BooleanStringForm.ItemIndex;
         OutputType := TProjectOutputType(cbb_OutputType.ItemIndex);
       end;

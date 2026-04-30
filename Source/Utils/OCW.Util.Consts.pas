@@ -15,6 +15,7 @@ const
   cJson_Properties = 'properties';
   cJson_ApplicationJson = 'application/json';
   cJson_ApplicationFormUrlencoded = 'application/x-www-form-urlencoded';
+  cJson_MultipartFormData = 'multipart/form-data';
   cJson_Parameters = 'parameters';
   cJson_type = 'type';
   cJson_Items = 'items';
