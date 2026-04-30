@@ -1,0 +1,81 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Expanded Store API",
+    "version": "1.0.0"
+  },
+  "host": "api.example.com",
+  "basePath": "/v1",
+  "schemes": ["https"],
+  "consumes": ["application/json"],
+  "produces": ["application/json"],
+  "paths": {
+    "/customers": {
+      "get": {
+        "operationId": "listCustomers",
+        "parameters": [
+          { "name": "page", "in": "query", "type": "integer", "required": false },
+          { "name": "active", "in": "query", "type": "boolean", "required": false },
+          { "name": "X-Request-Id", "in": "header", "type": "string", "required": false }
+        ],
+        "responses": { "200": { "description": "Customer list" } }
+      },
+      "post": {
+        "operationId": "createCustomer",
+        "parameters": [
+          {
+            "name": "customer",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "name": { "type": "string" },
+                "email": { "type": "string" }
+              }
+            }
+          }
+        ],
+        "responses": { "201": { "description": "Created" } }
+      }
+    },
+    "/customers/{customerId}": {
+      "parameters": [
+        { "name": "customerId", "in": "path", "type": "integer", "required": true }
+      ],
+      "get": {
+        "operationId": "getCustomer",
+        "responses": { "200": { "description": "Customer" } }
+      },
+      "put": {
+        "operationId": "replaceCustomer",
+        "parameters": [
+          {
+            "name": "customer",
+            "in": "body",
+            "required": true,
+            "schema": { "type": "object" }
+          }
+        ],
+        "responses": { "200": { "description": "Replaced" } }
+      },
+      "patch": {
+        "operationId": "updateCustomer",
+        "parameters": [
+          { "name": "notify", "in": "query", "type": "boolean", "required": false },
+          {
+            "name": "patch",
+            "in": "body",
+            "required": true,
+            "schema": { "type": "object" }
+          }
+        ],
+        "responses": { "200": { "description": "Updated" } }
+      },
+      "delete": {
+        "operationId": "deleteCustomer",
+        "responses": { "204": { "description": "Deleted" } }
+      }
+    }
+  }
+}

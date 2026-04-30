@@ -121,11 +121,9 @@ end;
 class procedure TFinalParsingObject.Clear;
 begin
   FFinalObjectType := TActiveType.atNone;
-  FreeAndNil(FFinalJson);
+  FFinalJson := nil;
   FFinalYaml := nil;
-
-  if Assigned(FInstance) then
-    FreeAndNil(FInstance);
+  FInstance := nil;
 end;
 
 class function TFinalParsingObject.GetInstance: TFinalParsingObject;

@@ -35,6 +35,56 @@ resourcestring
     sLineBreak +
     '  Application.Run;' + sLineBreak +
     'end.';
+  sConsolePR =
+    'program %0:s;' + sLineBreak +
+    sLineBreak +
+    '{$APPTYPE CONSOLE}' + sLineBreak +
+    sLineBreak +
+    'uses' + sLineBreak +
+    '  System.SysUtils;' + sLineBreak +
+    sLineBreak +
+    'begin' + sLineBreak +
+    '  try' + sLineBreak +
+    '    RunOpenAPISample;' + sLineBreak +
+    '  except' + sLineBreak +
+    '    on E: Exception do' + sLineBreak +
+    '      Writeln(E.ClassName, '': '', E.Message);' + sLineBreak +
+    '  end;' + sLineBreak +
+    'end.';
+  sConsoleSampleUnit =
+    'unit OpenAPISample;' + sLineBreak +
+    sLineBreak +
+    'interface' + sLineBreak +
+    sLineBreak +
+    'procedure RunOpenAPISample;' + sLineBreak +
+    sLineBreak +
+    'implementation' + sLineBreak +
+    sLineBreak +
+    'uses' + sLineBreak +
+    '  System.SysUtils, OpenAPIClient;' + sLineBreak +
+    sLineBreak +
+    'procedure RunOpenAPISample;' + sLineBreak +
+    'var' + sLineBreak +
+    '  Client: TOpenAPIClient;' + sLineBreak +
+    '  Response: string;' + sLineBreak +
+    '  Choice: string;' + sLineBreak +
+    'begin' + sLineBreak +
+    '  Client := TOpenAPIClient.Create;' + sLineBreak +
+    '  try' + sLineBreak +
+    '%0:s' +
+    '  finally' + sLineBreak +
+    '    Client.Free;' + sLineBreak +
+    '  end;' + sLineBreak +
+    'end;' + sLineBreak +
+    sLineBreak +
+    'end.';
+  sWrapperOnlyPR =
+    'program %0:s;' + sLineBreak +
+    sLineBreak +
+    '{$APPTYPE CONSOLE}' + sLineBreak +
+    sLineBreak +
+    'begin' + sLineBreak +
+    'end.';
 
   // Path for unit1 to be clear : C:\Users\Current windows Username\Documents\Embarcadero\Studio\Projects
   // 0: UnitName
@@ -49,7 +99,7 @@ resourcestring
     sLineBreak +
     'uses' + sLineBreak +
     '  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,' + sLineBreak +
-    '  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, Vcl.ExtCtrls, Math, ClientClass;' + sLineBreak +
+    '  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, Vcl.ExtCtrls, Math, OpenAPIClient;' + sLineBreak +
     sLineBreak +
     'type' + sLineBreak +
     '  TFrm_Main = class(TForm)' + sLineBreak +
@@ -57,10 +107,13 @@ resourcestring
     '    %1:s' + sLineBreak +
     '  private' + sLineBreak +
     '    FGridPanel: TGridPanel;' + sLineBreak +
+    '    FHeaderPanel: TPanel;' + sLineBreak +
+    '    FTitleLabel: TLabel;' + sLineBreak +
     '    FWidth: Integer;' + sLineBreak +
     '    FButtonCount: Integer;' + sLineBreak +
     '    FMemo: TMemo;' + sLineBreak +
     '    FMaximumWidth: Integer;' + sLineBreak +
+    '    procedure CreateHeader;' + sLineBreak +
     '    procedure AddGridPanel;' + sLineBreak +
     '    procedure AddButton(ACaption: string; AProc: TNotifyEvent);' + sLineBreak +
     '    procedure CreateUIObjects;' + sLineBreak +
@@ -87,13 +140,40 @@ resourcestring
     '  with TButton.Create(Self) do' + sLineBreak +
     '  begin' + sLineBreak +
     '    Parent := FGridPanel;' + sLineBreak +
+    '    AlignWithMargins := True;' + sLineBreak +
+    '    Margins.SetBounds(6, 4, 6, 4);' + sLineBreak +
     '    OnClick := AProc;' + sLineBreak +
     '    Caption := ACaption;' + sLineBreak +
-    '    Width := Canvas.TextWidth(Caption) + 12;' + sLineBreak +
+    '    Width := Max(170, Canvas.TextWidth(Caption) + 28);' + sLineBreak +
     '    FMaximumWidth := Max(Width, FMaximumWidth);' + sLineBreak +
-    '    Height := 32;' + sLineBreak +
+    '    Height := 36;' + sLineBreak +
     '    if FButtonCount < 5 then' + sLineBreak +
     '      FWidth := FWidth + Width;' + sLineBreak +
+    '  end;' + sLineBreak +
+    'end;' + sLineBreak +
+    sLineBreak +
+    'procedure TFrm_Main.CreateHeader;' + sLineBreak +
+    'begin' + sLineBreak +
+    '  FHeaderPanel := TPanel.Create(Self);' + sLineBreak +
+    '  with FHeaderPanel do' + sLineBreak +
+    '  begin' + sLineBreak +
+    '    Align := alTop;' + sLineBreak +
+    '    BevelOuter := bvNone;' + sLineBreak +
+    '    Color := clWindow;' + sLineBreak +
+    '    Height := 54;' + sLineBreak +
+    '    Parent := Self;' + sLineBreak +
+    '  end;' + sLineBreak +
+    sLineBreak +
+    '  FTitleLabel := TLabel.Create(Self);' + sLineBreak +
+    '  with FTitleLabel do' + sLineBreak +
+    '  begin' + sLineBreak +
+    '    Parent := FHeaderPanel;' + sLineBreak +
+    '    Align := alClient;' + sLineBreak +
+    '    Alignment := taCenter;' + sLineBreak +
+    '    Layout := tlCenter;' + sLineBreak +
+    '    Caption := ''OpenAPI Client API Samples'';' + sLineBreak +
+    '    Font.Style := [fsBold];' + sLineBreak +
+    '    Font.Size := 12;' + sLineBreak +
     '  end;' + sLineBreak +
     'end;' + sLineBreak +
     sLineBreak +
@@ -108,13 +188,9 @@ resourcestring
     '  begin' + sLineBreak +
     '    Parent := Self;' + sLineBreak +
     '    AlignWithMargins := True;' + sLineBreak +
-    '    Left := 10;' + sLineBreak +
-    '    Top := 10;' + sLineBreak +
-    '    Width := 301;' + sLineBreak +
-    '    Height := 403;' + sLineBreak +
-    '    Margins.Left := 10;' + sLineBreak +
-    '    Margins.Top := 10;' + sLineBreak +
-    '    Align := alClient;' + sLineBreak +
+    '    Margins.SetBounds(10, 10, 10, 10);' + sLineBreak +
+    '    Width := 320;' + sLineBreak +
+    '    Align := alLeft;' + sLineBreak +
     '    BevelEdges := [];' + sLineBreak +
     '    BevelOuter := bvNone;' + sLineBreak +
     '    Caption := '''';' + sLineBreak +
@@ -140,8 +216,11 @@ resourcestring
     'var' + sLineBreak +
     '  I: Integer;' + sLineBreak +
     'begin' + sLineBreak +
+    '  Caption := ''OpenAPI Client API Samples'';' + sLineBreak +
+    '  Position := poScreenCenter;' + sLineBreak +
     '  FButtonCount := 0;' + sLineBreak +
     '  FWidth := 0;' + sLineBreak +
+    '  CreateHeader;' + sLineBreak +
     '  AddGridPanel;' + sLineBreak +
     sLineBreak +
     '  %3:s' + sLineBreak +
@@ -158,22 +237,24 @@ resourcestring
     '  for I := 0 to Pred(FGridPanel.RowCollection.Count) do' + sLineBreak +
     '    FGridPanel.RowCollection.Items[I].SizeStyle := ssAuto;' + sLineBreak +
     sLineBreak +
-    '  FGridPanel.Align := alLeft;' + sLineBreak +
-    sLineBreak +
     '  FMemo := TMemo.Create(Self);' + sLineBreak +
     '  with FMemo do' + sLineBreak +
     '  begin' + sLineBreak +
-    '    Align := alClient;' + sLineBreak +
-    '    ScrollBars := ssBoth;' + sLineBreak +
     '    Parent := Self;' + sLineBreak +
+    '    Align := alClient;' + sLineBreak +
+    '    AlignWithMargins := True;' + sLineBreak +
+    '    Margins.SetBounds(0, 10, 10, 10);' + sLineBreak +
+    '    ScrollBars := ssBoth;' + sLineBreak +
+    '    WordWrap := False;' + sLineBreak +
+    '    ReadOnly := True;' + sLineBreak +
+    '    Font.Name := ''Consolas'';' + sLineBreak +
+    '    Font.Size := 10;' + sLineBreak +
+    '    Lines.Text := ''Select an API method from the left to send a sample request.'';' + sLineBreak +
     '  end;' + sLineBreak +
     sLineBreak +
-    '  if FGridPanel.ColumnCollection.Count > 3 then' + sLineBreak +
-    '    FGridPanel.Width := 4 * FMaximumWidth;' + sLineBreak +
-    sLineBreak +
-    sLineBreak +
-    '  Self.Width := Max(300, (FWidth + 361));' + sLineBreak +
-    '  Self.Height := Max(300, ((35 * FGridPanel.RowCollection.Count)));' + sLineBreak +
+    '  FGridPanel.Width := Max(360, 4 * (FMaximumWidth + 12));' + sLineBreak +
+    '  Self.Width := Max(920, (FGridPanel.Width + 560));' + sLineBreak +
+    '  Self.Height := Max(560, ((44 * FGridPanel.RowCollection.Count) + FHeaderPanel.Height + 80));' + sLineBreak +
     '  Self.WindowState := wsMaximized;' + sLineBreak +
     'end;' + sLineBreak +
     sLineBreak +
@@ -181,7 +262,7 @@ resourcestring
 
 
   sRestClientPartOne =
-    'unit URestClient;' + sLineBreak +
+    'unit OpenAPITransport;' + sLineBreak +
     sLineBreak +
     'interface' + sLineBreak +
     sLineBreak +
@@ -228,12 +309,12 @@ resourcestring
     'function CreateNetHttp(AApiAddress, AContentType, AAccept:String; ATimeOut: Integer): TNetHTTPClient;' + sLineBreak +
     'begin' + sLineBreak +
     '  Result := TNetHTTPClient.Create(nil);' + sLineBreak +
-    '  Result.HandleRedirects := Pos(''https://'', AApiAddress) > 0;' + sLineBreak +
-    '  Result.ConnectionTimeout := ATimeOut; //5 minutes' + sLineBreak +
-    '  Result.ResponseTimeout := ATimeOut; //5 minutes' + sLineBreak +
+    '  Result.HandleRedirects := True;' + sLineBreak +
+    '  Result.ConnectionTimeout := ATimeOut;' + sLineBreak +
+    '  Result.ResponseTimeout := ATimeOut;' + sLineBreak +
     '  Result.AcceptCharSet := ''utf-8'';' + sLineBreak +
     '  if AContentType = '''' then' + sLineBreak +
-    '    Result.ContentType := ''application/json''' + sLineBreak +
+    '    Result.ContentType := ''application/json; charset=utf-8''' + sLineBreak +
     '  else' + sLineBreak +
     '    Result.ContentType := AContentType;' + sLineBreak +
     sLineBreak +
@@ -254,6 +335,8 @@ resourcestring
     '  LvHeaders: TNetHeaders;' + sLineBreak +
     'begin' + sLineBreak +
     '  Result := '''';' + sLineBreak +
+    '  LvRequestStream := nil;' + sLineBreak +
+    '  SetLength(LvHeaders, 0);' + sLineBreak +
     '  if AApiStruct.ApiAddress = '''' then' + sLineBreak +
     '    Exit;' + sLineBreak +
     sLineBreak +
@@ -280,6 +363,7 @@ resourcestring
     '      for I := 0 to Length(AApiStruct.CustomHeaders) - 1 do' + sLineBreak +
     '      begin' + sLineBreak +
     '        if Odd(I) then Continue;' + sLineBreak +
+    '        if I + 1 >= Length(AApiStruct.CustomHeaders) then Break;' + sLineBreak +
     '        if AApiStruct.CustomHeaders[I] <> '''' then' + sLineBreak +
     '        begin' + sLineBreak +
     '          SetLength(LvHeaders, length(LvHeaders) + 1);' + sLineBreak +
@@ -299,16 +383,11 @@ resourcestring
     sLineBreak +
     '    LvRequestStream := TStringStream.Create(LvRequestString, TEncoding.UTF8);' + sLineBreak +
     '    try' + sLineBreak +
-    '      if (AApiStruct.Method = ''POST'') then' + sLineBreak +
-    '        LvHttp.Post(AApiStruct.ApiAddress, LvRequestStream, LvResponseStream, LvHeaders)' + sLineBreak +
-    '      else if (AApiStruct.Method = ''GET'') then' + sLineBreak +
-    '        LvHttp.Get(AApiStruct.ApiAddress, LvResponseStream, LvHeaders)' + sLineBreak +
+    '      LvHttp.Execute(AApiStruct.Method.ToUpper, AApiStruct.ApiAddress, LvRequestStream, LvResponseStream, LvHeaders);' + sLineBreak +
     sLineBreak +
     '    except on E:Exception do' + sLineBreak +
     '      begin' + sLineBreak +
-    '        Result := '''';' + sLineBreak +
-    '        ShowMessage(E.Message);' + sLineBreak +
-    '        Exit;' + sLineBreak +
+    '        raise Exception.Create(''API request failed: '' + E.Message);' + sLineBreak +
     '      end;' + sLineBreak +
     '    end;' + sLineBreak +
     sLineBreak +
@@ -324,7 +403,7 @@ resourcestring
     sLineBreak +
     'constructor TApiStructure.Create;' + sLineBreak +
     'begin' + sLineBreak +
-    '  FTimeOut := 30000; // Default timeout for connection and response timeout = 5 minutes!' + sLineBreak +
+    '  FTimeOut := 30000;' + sLineBreak +
     'end;' + sLineBreak +
     sLineBreak +
 
@@ -348,7 +427,7 @@ resourcestring
     'function %0:s%1:s: string;';
 
   sFunctionImplementation =
-    'function TClientClass.%0:s%1:s: string;' + sLineBreak +
+    'function TOpenAPIClient.%0:s%1:s: string;' + sLineBreak +
     '%2:s' + sLineBreak +
     //sLineBreak +
     'end;' + sLineBreak;
@@ -356,19 +435,15 @@ resourcestring
   //==================================
   //0: MethodName
   //1: In-path and Quesry parameters
-  //2: Request Object creation
-  //3: Header parameters count
-  //4: Header parameters count
+  //2: Optional request/header statements
   sGetFunctionBody =
     'var' + sLineBreak +
     '  LvStruct: TApiStructure;' + sLineBreak +
     'begin' + sLineBreak +
     '  LvStruct := NewApiStructure(''GET'', ''%0:s'');' + sLineBreak +
     '  try' + sLineBreak +
-    '    LvStruct.ApiAddress := LvStruct.ApiAddress%1:s;' + sLineBreak +
-    '    %2:s' + sLineBreak +
-    '    %3:s' + sLineBreak +
-    '    %4:s' + sLineBreak +
+    '    LvStruct.ApiAddress := %1:s;' + sLineBreak +
+    '%2:s' +
     '    Result := SendToAPI(LvStruct);' + sLineBreak +
     '  finally' + sLineBreak +
     '    LvStruct.Free;' + sLineBreak +
@@ -378,19 +453,15 @@ resourcestring
   //==================================
   //0: MethodName
   //1: In-path and Quesry parameters
-  //2: Request Object creation
-  //3: Header parameters count
-  //4: Header parameters count
+  //2: Optional request/header statements
   sPostFunctionBody =
     'var' + sLineBreak +
     '  LvStruct: TApiStructure;' + sLineBreak +
     'begin' + sLineBreak +
     '  LvStruct := NewApiStructure(''POST'', ''%0:s'');' + sLineBreak +
     '  try' + sLineBreak +
-    '    LvStruct.ApiAddress := LvStruct.ApiAddress%1:s;' + sLineBreak +
-    '    %2:s' + sLineBreak +
-    '    %3:s' + sLineBreak +
-    '    %4:s' + sLineBreak +
+    '    LvStruct.ApiAddress := %1:s;' + sLineBreak +
+    '%2:s' +
     '    Result := SendToAPI(LvStruct);' + sLineBreak +
     '  finally' + sLineBreak +
     '    LvStruct.Free;' + sLineBreak +
@@ -399,19 +470,15 @@ resourcestring
   //==================================
   //0: MethodName
   //1: In-path and Quesry parameters
-  //2: Request Object creation
-  //3: Header parameters count
-  //4: Header parameters count
+  //2: Optional request/header statements
   sPatchFunctionBody =
     'var' + sLineBreak +
     '  LvStruct: TApiStructure;' + sLineBreak +
     'begin' + sLineBreak +
     '  LvStruct := NewApiStructure(''PATCH'', ''%0:s'');' + sLineBreak +
     '  try' + sLineBreak +
-    '    LvStruct.ApiAddress := LvStruct.ApiAddress%1:s;' + sLineBreak +
-    '    %2:s' + sLineBreak +
-    '    %3:s' + sLineBreak +
-    '    %4:s' + sLineBreak +
+    '    LvStruct.ApiAddress := %1:s;' + sLineBreak +
+    '%2:s' +
     '    Result := SendToAPI(LvStruct);' + sLineBreak +
     '  finally' + sLineBreak +
     '    LvStruct.Free;' + sLineBreak +
@@ -420,19 +487,15 @@ resourcestring
   //==================================
   //0: MethodName
   //1: In-path and Quesry parameters
-  //2: Request Object creation
-  //3: Header parameters count
-  //4: Header parameters count
+  //2: Optional request/header statements
   sPutFunctionBody =
     'var' + sLineBreak +
     '  LvStruct: TApiStructure;' + sLineBreak +
     'begin' + sLineBreak +
     '  LvStruct := NewApiStructure(''PUT'', ''%0:s'');' + sLineBreak +
     '  try' + sLineBreak +
-    '    LvStruct.ApiAddress := LvStruct.ApiAddress%1:s;' + sLineBreak +
-    '    %2:s' + sLineBreak +
-    '    %3:s' + sLineBreak +
-    '    %4:s' + sLineBreak +
+    '    LvStruct.ApiAddress := %1:s;' + sLineBreak +
+    '%2:s' +
     '    Result := SendToAPI(LvStruct);' + sLineBreak +
     '  finally' + sLineBreak +
     '    LvStruct.Free;' + sLineBreak +
@@ -441,19 +504,15 @@ resourcestring
   //==================================
   //0: MethodName
   //1: In-path and Quesry parameters
-  //2: Request Object creation
-  //3: Header parameters count
-  //4: Header parameters count
+  //2: Optional request/header statements
   sDeleteFunctionBody =
     'var' + sLineBreak +
     '  LvStruct: TApiStructure;' + sLineBreak +
     'begin' + sLineBreak +
     '  LvStruct := NewApiStructure(''DELETE'', ''%0:s'');' + sLineBreak +
     '  try' + sLineBreak +
-    '    LvStruct.ApiAddress := LvStruct.ApiAddress%1:s;' + sLineBreak +
-    '    %2:s' + sLineBreak +
-    '    %3:s' + sLineBreak +
-    '    %4:s' + sLineBreak +
+    '    LvStruct.ApiAddress := %1:s;' + sLineBreak +
+    '%2:s' +
     '    Result := SendToAPI(LvStruct);' + sLineBreak +
     '  finally' + sLineBreak +
     '    LvStruct.Free;' + sLineBreak +
@@ -477,12 +536,12 @@ resourcestring
   //15: DeleteMethod Implementations
 
   sClientClassUnit =
-    'unit ClientClass;' + sLineBreak +
+    'unit OpenAPIClient;' + sLineBreak +
     sLineBreak +
     'interface' + sLineBreak +
     sLineBreak +
     'uses' + sLineBreak +
-    '  System.SysUtils, System.Generics.Collections,System.StrUtils, URestClient;' + sLineBreak +
+    '  System.SysUtils, System.Generics.Collections, System.StrUtils, System.JSON, System.NetEncoding, System.Variants, OpenAPITransport;' + sLineBreak +
     sLineBreak +
     'const' + sLineBreak +
     '    cBaseURL = ''%0:s'';' + sLineBreak +
@@ -496,7 +555,7 @@ resourcestring
     '    function AddX(AKey: string; AValue: string): TDictionary<string, string>;' + sLineBreak +
     '  end;' + sLineBreak +
     sLineBreak +
-    '  TClientClass = class' + sLineBreak +
+    '  TOpenAPIClient = class' + sLineBreak +
     '  private' + sLineBreak +
     '    FPaths: TDictionary<string, string>;' + sLineBreak +
     '    procedure SetPaths;' + sLineBreak +
@@ -516,21 +575,21 @@ resourcestring
     sLineBreak +
     'implementation' + sLineBreak +
     sLineBreak +
-    '{ TClientClass }' + sLineBreak +
+    '{ TOpenAPIClient }' + sLineBreak +
     sLineBreak +
-    'constructor TClientClass.Create;' + sLineBreak +
+    'constructor TOpenAPIClient.Create;' + sLineBreak +
     'begin' + sLineBreak +
     '  FPaths := TDictionary<string, string>.Create;' + sLineBreak +
     '  SetPaths;' + sLineBreak +
     'end;' + sLineBreak +
     sLineBreak +
-    'destructor TClientClass.Destroy;' + sLineBreak +
+    'destructor TOpenAPIClient.Destroy;' + sLineBreak +
     'begin' + sLineBreak +
     '  FPaths.Free;' + sLineBreak +
     '  inherited;' + sLineBreak +
     'end;' + sLineBreak +
     sLineBreak +
-    'function TClientClass.NewApiStructure(AMethodType: string; AMethodName: string): TApiStructure;' + sLineBreak +
+    'function TOpenAPIClient.NewApiStructure(AMethodType: string; AMethodName: string): TApiStructure;' + sLineBreak +
     'begin' + sLineBreak +
     '  Result := TApiStructure.Create;' + sLineBreak +
     '  with Result do' + sLineBreak +
@@ -544,7 +603,7 @@ resourcestring
     '  end;' + sLineBreak +
     'end;' + sLineBreak +
     sLineBreak +
-    'function TClientClass.CastByBooleanSetting(ABoolValue: Boolean; AConvertType: Byte): string;' + sLineBreak +
+    'function TOpenAPIClient.CastByBooleanSetting(ABoolValue: Boolean; AConvertType: Byte): string;' + sLineBreak +
     'begin' + sLineBreak +
     '  {0: true-false' + sLineBreak +
     '  1: 1-0' + sLineBreak +
@@ -553,15 +612,17 @@ resourcestring
     '  4: on-off' + sLineBreak +
     '  }' + sLineBreak +
     '  case AConvertType of' + sLineBreak +
-    '    0: IfThen(ABoolValue, QuotedStr(''true''), QuotedStr(''false''));' + sLineBreak +
-    '    1: IfThen(ABoolValue, QuotedStr(''1''), QuotedStr(''0''));' + sLineBreak +
-    '    2: IfThen(ABoolValue, QuotedStr(''yes''), QuotedStr(''no''));' + sLineBreak +
-    '    3: IfThen(ABoolValue, QuotedStr(''y''), QuotedStr(''n''));' + sLineBreak +
-    '    4: IfThen(ABoolValue, QuotedStr(''on''), QuotedStr(''off''));' + sLineBreak +
+    '    0: Result := IfThen(ABoolValue, ''true'', ''false'');' + sLineBreak +
+    '    1: Result := IfThen(ABoolValue, ''1'', ''0'');' + sLineBreak +
+    '    2: Result := IfThen(ABoolValue, ''yes'', ''no'');' + sLineBreak +
+    '    3: Result := IfThen(ABoolValue, ''y'', ''n'');' + sLineBreak +
+    '    4: Result := IfThen(ABoolValue, ''on'', ''off'');' + sLineBreak +
+    '  else' + sLineBreak +
+    '    Result := IfThen(ABoolValue, ''true'', ''false'');' + sLineBreak +
     '  end;' + sLineBreak +
     'end;' + sLineBreak +
     sLineBreak +
-    'procedure TClientClass.SetPaths;' + sLineBreak +
+    'procedure TOpenAPIClient.SetPaths;' + sLineBreak +
     'begin' + sLineBreak +
     '  FPaths' + sLineBreak +
     '%10:s' + sLineBreak +
@@ -577,7 +638,10 @@ resourcestring
     sLineBreak +
     'function TDicHelper.AddX(AKey: string; AValue: string): TDictionary<string,string>;' + sLineBreak +
     'begin' + sLineBreak +
-    '  Self.Add(AKey, AValue);' + sLineBreak +
+    '  if Self.ContainsKey(AKey) then' + sLineBreak +
+    '    Self[AKey] := AValue' + sLineBreak +
+    '  else' + sLineBreak +
+    '    Self.Add(AKey, AValue);' + sLineBreak +
     '  Result := Self;' + sLineBreak +
     'end;' + sLineBreak +
     sLineBreak +
@@ -588,10 +652,10 @@ resourcestring
     sButtonOnClickEvent =
     'procedure TFrm_Main.%0:sClick(Sender: TObject);' + sLineBreak +
     'var' + sLineBreak +
-    '  LvClient: TClientClass;' + sLineBreak +
+    '  LvClient: TOpenAPIClient;' + sLineBreak +
     '  LvResponseStr: string;' + sLineBreak +
     'begin' + sLineBreak +
-    '  LvClient := TClientClass.Create;' + sLineBreak +
+    '  LvClient := TOpenAPIClient.Create;' + sLineBreak +
     '  try' + sLineBreak +
     '    LvResponseStr := LvClient.%1:s;' + sLineBreak +
     '    FMemo.Lines.Clear;' + sLineBreak +

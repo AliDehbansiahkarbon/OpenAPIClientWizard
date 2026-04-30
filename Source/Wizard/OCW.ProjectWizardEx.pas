@@ -26,8 +26,10 @@ type
   private
     class var GlobalTempOpenAPIPathObjects: TObjectDictionary<string, TOpenAPIPath>;
     class procedure GetOpenAPIPathsObject(AExtractedOpenAPI: TFinalParsingObject);
+    class procedure PrepareConsoleSampleCall;
     class procedure CreateMainUnit(AExtractedOpenAPI: TFinalParsingObject; const APersonality: string; AModuleServices: IOTAModuleServices; AProject: IOTAProject);
     class function CreateModelUnit(AExtractedOpenAPI: TFinalParsingObject; const APersonality: string; AModuleServices: IOTAModuleServices; AProject: IOTAProject): IOTAModule;
+    class function CreateConsoleSampleUnit(const APersonality: string; AModuleServices: IOTAModuleServices; AProject: IOTAProject): IOTAModule;
   public
     class procedure RegisterOCWProjectWizard(const APersonality: string);
   end;
@@ -80,6 +82,133 @@ begin
         AProject.AddFile(Result.FileName, True);
     end;
   end;
+end;
+
+class function TOCWNewProjectWizard.CreateConsoleSampleUnit(const APersonality: string; AModuleServices: IOTAModuleServices; AProject: IOTAProject): IOTAModule;
+var
+  LvSampleCreator: IOTACreator;
+begin
+  Result := nil;
+  LvSampleCreator := TNewModelUnitEx.Create('ConsoleSample', APersonality);
+  Result := AModuleServices.CreateModule(LvSampleCreator);
+  if AProject <> nil then
+    AProject.AddFile(Result.FileName, True);
+end;
+
+class procedure TOCWNewProjectWizard.PrepareConsoleSampleCall;
+var
+  LvKey: string;
+  LvPath: TOpenAPIPath;
+  LvMethod: TMethodObject;
+  LvMethodName: string;
+  LvParams: string;
+  LvDataType: string;
+  LvMenuLines: string;
+  LvCaseLines: string;
+  LvSampleIndex: Integer;
+
+  function BuildMethodName(AMethod: TMethodObject): string;
+  begin
+    Result := AMethod._MethodName;
+
+    case TFinalParsingObject.PrefixType of
+      0:
+        case AMethod.MethodType of
+          mtGet: Result := Result + '_Get';
+          mtPost: Result := Result + '_Post';
+          mtPatch: Result := Result + '_Patch';
+          mtPut: Result := Result + '_Put';
+          mtDelete: Result := Result + '_Delete';
+        end;
+      1:
+        case AMethod.MethodType of
+          mtGet: Result := 'Get_' + Result;
+          mtPost: Result := 'Post_' + Result;
+          mtPatch: Result := 'Patch_' + Result;
+          mtPut: Result := 'Put_' + Result;
+          mtDelete: Result := 'Delete_' + Result;
+        end;
+    end;
+  end;
+
+  function BuildSampleParams(AMethod: TMethodObject): string;
+  var
+    LvSampleParam: TParameter;
+  begin
+    Result := EmptyStr;
+    if not Assigned(AMethod.Params) then
+      Exit;
+
+    for LvSampleParam in AMethod.Params do
+    begin
+      LvDataType := LvSampleParam.DataType.Trim.ToLower;
+      if not Result.IsEmpty then
+        Result := Result + ', ';
+
+      if (LvDataType = 'string') or (LvDataType = 'variant') then
+        Result := Result + QuotedStr('')
+      else if LvDataType = 'integer' then
+        Result := Result + '0'
+      else if LvDataType = 'boolean' then
+        Result := Result + 'False'
+      else if (LvDataType = 'number') or (LvDataType = 'float') then
+        Result := Result + '0'
+      else if LvDataType = 'array' then
+        Result := Result + '[]'
+      else
+        Result := Result + 'nil';
+    end;
+  end;
+begin
+  TSingletonSettingObj.Instance.ConsoleSampleCall :=
+    '    Writeln(''OpenAPI client wrapper is ready. Call the generated methods on Client.'');' + sLineBreak;
+
+  if not Assigned(GlobalTempOpenAPIPathObjects) then
+    Exit;
+
+  LvMenuLines := EmptyStr;
+  LvCaseLines := EmptyStr;
+  LvSampleIndex := 0;
+
+  for LvKey in GlobalTempOpenAPIPathObjects.Keys do
+  begin
+    LvPath := GlobalTempOpenAPIPathObjects.Items[LvKey];
+    if not Assigned(LvPath) or not Assigned(LvPath.Methods) or (LvPath.Methods.Count = 0) then
+      Continue;
+
+    for LvMethod in LvPath.Methods do
+    begin
+      Inc(LvSampleIndex);
+      LvMethodName := BuildMethodName(LvMethod);
+      LvParams := BuildSampleParams(LvMethod);
+
+      LvMenuLines := LvMenuLines +
+        '    Writeln(' + QuotedStr(Format('  %d. %s', [LvSampleIndex, LvMethodName])) + ');' + sLineBreak;
+
+      LvCaseLines := LvCaseLines +
+        '      ' + LvSampleIndex.ToString + ':' + sLineBreak +
+        '        begin' + sLineBreak +
+        '          Writeln(' + QuotedStr('Calling ' + LvMethodName + '...') + ');' + sLineBreak +
+        '          Response := Client.' + LvMethodName + '(' + LvParams + ');' + sLineBreak +
+        '          Writeln(Response);' + sLineBreak +
+        '        end;' + sLineBreak;
+    end;
+  end;
+
+  if LvSampleIndex = 0 then
+    Exit;
+
+  TSingletonSettingObj.Instance.ConsoleSampleCall :=
+    '    Writeln(''OpenAPI API usage samples:'');' + sLineBreak +
+    LvMenuLines +
+    '    Writeln;' + sLineBreak +
+    '    Write(''Select a sample number and press Enter, or leave blank to exit: '');' + sLineBreak +
+    '    Readln(Choice);' + sLineBreak +
+    '    case StrToIntDef(Trim(Choice), 0) of' + sLineBreak +
+    LvCaseLines +
+    '    else' + sLineBreak +
+    '      Writeln(''No sample selected.'');' + sLineBreak +
+    '    end;' + sLineBreak;
 end;
 
 class procedure TOCWNewProjectWizard.GetOpenAPIPathsObject(AExtractedOpenAPI: TFinalParsingObject);
@@ -171,7 +300,7 @@ begin
                 Continue;
 
               try
-                GlobalTempOpenAPIPathObjects.Add(LvPostmanCollection.Items[I].Name, TOpenAPIPath.CreatePostman(LvPostmanCollection.Items[I]));
+                GlobalTempOpenAPIPathObjects.Add(LvPostmanCollection.Items[I].Name + '_' + I.ToString, TOpenAPIPath.CreatePostman(LvPostmanCollection.Items[I]));
               except on E: Exception do
                 {$IFDEF CODESITE}
                   CodeSite.Send('Cannot extract method: ' + LvPostmanCollection.Items[I].Name + #13 + E.Message);
@@ -193,8 +322,6 @@ begin
 end;
 
 class procedure TOCWNewProjectWizard.RegisterOCWProjectWizard(const APersonality: string);
-var
-  LvModelUnit: IOTAModule;
 begin
   RegisterPackageWizard(TExpertsRepositoryProjectWizardWithProc.Create(APersonality, sNewOCWCProjectHint, sNewOCWProjectCaption,
     'OCW.Wizard.NewProjectWizard', // do not localize
@@ -207,20 +334,28 @@ begin
       LvConfig: IOTABuildConfiguration;
 
       LvRestClientUnit: IOTAModule;
+      LvModelUnit: IOTAModule;
+      LvConsoleSampleUnit: IOTAModule;
       LvRestClientCreator: IOTACreator;
 
       LvProjectSourceCreator: IOTACreator;
     begin
-      TFinalParsingObject.Instance.Clear;
+      LvModelUnit := nil;
+      LvConsoleSampleUnit := nil;
+      TFinalParsingObject.Clear;
       LvWizardForm := TFrm_OCWNewProject.Create(nil);
       GlobalTempOpenAPIPathObjects := TObjectDictionary<string, TOpenAPIPath>.Create;
       TSingletonSettingObj.Instance.RegisterFormClassForTheming(TFrm_OCWNewProject, LvWizardForm);
 
       if LvWizardForm.ShowModal = mrOk then
       begin
+        Screen.Cursor := crHourGlass;
         try
           if not LvWizardForm.AddToProjectGroup then
             (BorlandIDEServices as IOTAModuleServices).CloseAll;
+
+          GetOpenAPIPathsObject(LvWizardForm.ExtractedSpecification);
+          PrepareConsoleSampleCall;
 
           LvModuleServices := (BorlandIDEServices as IOTAModuleServices);
 
@@ -231,10 +366,12 @@ begin
 
           LvConfig := (LvProject.ProjectOptions as IOTAProjectOptionsConfigurations).BaseConfiguration;
           LvConfig.SetValue(sUnitSearchPath, '$(OCW)');
-          LvConfig.SetValue(sFramework, 'VCL');
+          if TSingletonSettingObj.Instance.OutputType = potSampleVCL then
+            LvConfig.SetValue(sFramework, 'VCL');
 
           //Create Main Unit
-          CreateMainUnit(LvWizardForm.ExtractedSpecification, APersonality, LvModuleServices, LvProject);
+          if TSingletonSettingObj.Instance.OutputType = potSampleVCL then
+            CreateMainUnit(LvWizardForm.ExtractedSpecification, APersonality, LvModuleServices, LvProject);
 
           //Create RestClient Unit
           LvRestClientCreator := TNewModelUnitEx.Create('RestClient', APersonality);
@@ -246,6 +383,9 @@ begin
           if (Assigned(LvWizardForm.ExtractedSpecification.FinalJson)) or (Assigned(LvWizardForm.ExtractedSpecification.FinalYaml)) then
             LvModelUnit := CreateModelUnit(LvWizardForm.ExtractedSpecification, APersonality, LvModuleServices, LvProject);
 
+          if TSingletonSettingObj.Instance.OutputType = potSampleConsole then
+            LvConsoleSampleUnit := CreateConsoleSampleUnit(APersonality, LvModuleServices, LvProject);
+
           // Force to save project to be cimpile-able
           if LvProject.Save(False, True) then
           begin
@@ -253,13 +393,17 @@ begin
 
             if Assigned(LvModelUnit) then
               LvModelUnit.Save(False, True);
+
+            if Assigned(LvConsoleSampleUnit) then
+              LvConsoleSampleUnit.Save(False, True);
           end;
         finally
           try
+            Screen.Cursor := crDefault;
             LvWizardForm.Free;
             if Assigned(GlobalTempOpenAPIPathObjects) then
               GlobalTempOpenAPIPathObjects.Free;
-            TFinalParsingObject.Instance.Clear;
+            TFinalParsingObject.Clear;
           except
           end;
         end;
@@ -267,11 +411,12 @@ begin
       else
       begin
         try
+          Screen.Cursor := crDefault;
           LvWizardForm.Free;
           if Assigned(GlobalTempOpenAPIPathObjects) then
             GlobalTempOpenAPIPathObjects.Free;
 
-          TFinalParsingObject.Instance.Clear;
+          TFinalParsingObject.Clear;
         except on E: Exception do
         end;
       end;

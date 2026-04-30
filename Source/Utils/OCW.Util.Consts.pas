@@ -17,6 +17,9 @@ const
   cJson_ApplicationFormUrlencoded = 'application/x-www-form-urlencoded';
   cJson_Parameters = 'parameters';
   cJson_type = 'type';
+  cJson_Items = 'items';
+  cJson_Format = 'format';
+  cJson_Ref = '$ref';
   cJson_name = 'name';
   cJson_In = 'in';
   cJson_Summary = 'summary';
@@ -30,8 +33,10 @@ const
   cPostman_Info = 'info';
   cPostman_Variables = 'variables';
   cPostman_Item = 'item';
+  cPostman_Requests = 'requests';
   cPostman_Request = 'request';
   cPostman_Name = 'name';
+  cPostman_Id = 'id';
   cPostman_Method = 'method';
   cPostman_Auth = 'auth';
   cPostman_Type = 'type';

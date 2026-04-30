@@ -62,12 +62,12 @@ uses
 function CreateNetHttp(const AApiAddress, AContentType, AAccept:string; ATimeOut: Integer): TNetHTTPClient;
 begin
   Result := TNetHTTPClient.Create(nil);
-  Result.HandleRedirects := Pos('https://', AApiAddress) > 0;
-  Result.ConnectionTimeout := ATimeOut; //5 minutes
-  Result.ResponseTimeout := ATimeOut; //5 minutes
+  Result.HandleRedirects := True;
+  Result.ConnectionTimeout := ATimeOut;
+  Result.ResponseTimeout := ATimeOut;
   Result.AcceptCharSet := Utf8AcceptCharSet;
   if AContentType = EmptyStr then
-    Result.ContentType := cJson_ApplicationJson
+    Result.ContentType := cJson_ApplicationJson + '; charset=utf-8'
   else
     Result.ContentType := AContentType;
 
@@ -95,6 +95,8 @@ var
   LvHeaders: TNetHeaders;
 begin
   Result := EmptyStr;
+  LvRequestStream := nil;
+  SetLength(LvHeaders, 0);
   if FApiAddress.Equals(EmptyStr) then
     Exit;
 
@@ -119,6 +121,7 @@ begin
       for I := 0 to Length(FCustomHeaders) - 1 do
       begin
         if Odd(I) then Continue;
+        if I + 1 >= Length(FCustomHeaders) then Break;
         if FCustomHeaders[I] <> EmptyStr then
         begin
           SetLength(LvHeaders, length(LvHeaders) + 1);
@@ -138,16 +141,11 @@ begin
 
     LvRequestStream := TStringStream.Create(LvRequestString, TEncoding.UTF8);
     try
-      if (FMethod = 'POST') then
-        LvHttp.Post(FApiAddress, LvRequestStream, LvResponseStream, LvHeaders)
-      else if (FMethod = 'GET') then
-        LvHttp.Get(FApiAddress, LvResponseStream, LvHeaders)
+      LvHttp.Execute(FMethod.ToUpper, FApiAddress, LvRequestStream, LvResponseStream, LvHeaders);
 
     except on E:Exception do
       begin
-        Result := EmptyStr;
-        ShowMessage(E.Message);
-        Exit;
+        raise Exception.Create('API request failed: ' + E.Message);
       end;
     end;
 

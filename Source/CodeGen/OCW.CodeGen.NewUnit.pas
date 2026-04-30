@@ -72,7 +72,10 @@ end;
 
 function TNewUnit.GetCreatorType: string;
 begin
-  Result := sForm;
+  if FFormName <> '' then
+    Result := sForm
+  else
+    Result := sUnit;
 end;
 
 function TNewUnit.GetExisting: Boolean;
@@ -102,7 +105,7 @@ end;
 
 function TNewUnit.GetMainForm: Boolean;
 begin
-  Result := True;
+  Result := FFormName <> '';
 end;
 
 function TNewUnit.GetOwner: IOTAModule;
@@ -112,7 +115,7 @@ end;
 
 function TNewUnit.GetShowForm: Boolean;
 begin
-  Result := True;
+  Result := FFormName <> '';
 end;
 
 function TNewUnit.GetShowSource: Boolean;

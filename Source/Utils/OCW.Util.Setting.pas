@@ -14,6 +14,8 @@ const
   CVersion = 'v1.0.0.0';
 
 type
+  TProjectOutputType = (potSampleVCL, potSampleConsole, potWrapperOnly);
+
   TSingletonSettingObj = class(TObject)
   private
     FBaseURL: string;
@@ -23,6 +25,8 @@ type
     FVersion: Byte;
     FAuthType: Byte;
     FBooleanStringForm: Integer;
+    FOutputType: TProjectOutputType;
+    FConsoleSampleCall: string;
     class var FInstance: TSingletonSettingObj;
     class function GetInstance: TSingletonSettingObj; static;
   public
@@ -37,6 +41,8 @@ type
     property Version: Byte read FVersion write FVersion;
     property AuthType: Byte read FAuthType write FAuthType;
     property BooleanStringForm: Integer read FBooleanStringForm write FBooleanStringForm;
+    property OutputType: TProjectOutputType read FOutputType write FOutputType;
+    property ConsoleSampleCall: string read FConsoleSampleCall write FConsoleSampleCall;
 
     class property Instance: TSingletonSettingObj read GetInstance;
   end;
@@ -49,6 +55,7 @@ implementation
 constructor TSingletonSettingObj.Create;
 begin
  inherited;
+ FOutputType := potSampleVCL;
 end;
 
 destructor TSingletonSettingObj.Destroy;

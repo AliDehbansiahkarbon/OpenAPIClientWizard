@@ -44,7 +44,10 @@ type
     cbb_Prefix: TComboBox;
     lbl_prefix: TLabel;
     pnl_Main: TPanel;
-    rb_GetBaseURL: TRadioButton;
+    lbl_BaseURL: TLabel;
+    lbl_BaseURLHint: TLabel;
+    lbl_OutputType: TLabel;
+    cbb_OutputType: TComboBox;
     procedure Btn_CreateClick(Sender: TObject);
     procedure FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure btnAboutClick(Sender: TObject);
@@ -58,6 +61,9 @@ type
     function GetAddToProjectGroup: boolean;
     function InputsValidation: Boolean;
     function DownloadFileFromURL(const AURL: string; ATempFileName: string): Boolean;
+    function ExtractBaseURLFromSpec: string;
+    function ExtractJsonBaseURL(AJsonObject: TJSONObject): string;
+    function ExtractYamlBaseURL(AYamlDocument: IYamlDocument): string;
     { Private declarations }
   public
     property AddToProjectGroup: boolean read GetAddToProjectGroup;
@@ -170,13 +176,16 @@ begin
     begin
       with TSingletonSettingObj.Instance do
       begin
-        BaseURL := edt_BaseURL.Text;
+        BaseURL := Trim(edt_BaseURL.Text);
+        if BaseURL = EmptyStr then
+          BaseURL := ExtractBaseURLFromSpec;
         BearerToken := EmptyStr;
         UserName := EmptyStr;
         Password := EmptyStr;
         Version := cbb_Version.ItemIndex;
         AuthType := 0;
         BooleanStringForm := cbb_BooleanStringForm.ItemIndex;
+        OutputType := TProjectOutputType(cbb_OutputType.ItemIndex);
       end;
 
       Self.ModalResult := mrOk;
@@ -239,15 +248,12 @@ end;
 procedure TFrm_OCWNewProject.FormCreate(Sender: TObject);
 begin
   FExtractedSpec := TFinalParsingObject.Instance;
+  cbb_OutputType.ItemIndex := Ord(potSampleVCL);
 end;
 
 procedure TFrm_OCWNewProject.FormDestroy(Sender: TObject);
 begin
-  try
-    if Assigned(FExtractedSpec.Instance) then
-      FExtractedSpec.Instance.Free;
-  except
-  end;
+  FExtractedSpec := nil;
 end;
 
 procedure TFrm_OCWNewProject.FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
@@ -259,6 +265,93 @@ end;
 function TFrm_OCWNewProject.GetAddToProjectGroup: boolean;
 begin
   Result := chk_AddToProjectGroup.Checked;
+end;
+
+function TFrm_OCWNewProject.ExtractBaseURLFromSpec: string;
+begin
+  Result := EmptyStr;
+  if not Assigned(FExtractedSpec) then
+    Exit;
+
+  case FExtractedSpec.FinalObjectType of
+    atSwaggerJSON, atOpenAPiJson, atPostManCollection:
+      if FExtractedSpec.FinalJson is TJSONObject then
+        Result := ExtractJsonBaseURL(TJSONObject(FExtractedSpec.FinalJson));
+
+    atOpenAPIYaml:
+      if Assigned(FExtractedSpec.FinalYaml) then
+        Result := ExtractYamlBaseURL(FExtractedSpec.FinalYaml);
+  end;
+end;
+
+function TFrm_OCWNewProject.ExtractJsonBaseURL(AJsonObject: TJSONObject): string;
+var
+  LvServers: TJSONArray;
+  LvServer: TJSONObject;
+  LvSchemes: TJSONArray;
+  LvScheme: string;
+  LvHost: string;
+  LvBasePath: string;
+begin
+  Result := EmptyStr;
+  if not Assigned(AJsonObject) then
+    Exit;
+
+  if AJsonObject.FindValue('servers') is TJSONArray then
+  begin
+    LvServers := AJsonObject.FindValue('servers') as TJSONArray;
+    if (LvServers.Count > 0) and (LvServers.Items[0] is TJSONObject) then
+    begin
+      LvServer := LvServers.Items[0] as TJSONObject;
+      if Assigned(LvServer.FindValue('url')) then
+        Exit(LvServer.GetValue('url').Value.TrimRight(['/']));
+    end;
+  end;
+
+  if Assigned(AJsonObject.FindValue('host')) then
+  begin
+    LvScheme := 'https';
+    LvHost := AJsonObject.GetValue('host').Value;
+    LvBasePath := EmptyStr;
+
+    if AJsonObject.FindValue('schemes') is TJSONArray then
+    begin
+      LvSchemes := AJsonObject.FindValue('schemes') as TJSONArray;
+      if LvSchemes.Count > 0 then
+        LvScheme := LvSchemes.Items[0].Value;
+    end;
+
+    if Assigned(AJsonObject.FindValue('basePath')) then
+      LvBasePath := AJsonObject.GetValue('basePath').Value;
+
+    Result := Format('%s://%s%s', [LvScheme, LvHost, LvBasePath]).TrimRight(['/']);
+  end;
+end;
+
+function TFrm_OCWNewProject.ExtractYamlBaseURL(AYamlDocument: IYamlDocument): string;
+var
+  I, J: Integer;
+  LvRootItem: TYamlNode;
+begin
+  Result := EmptyStr;
+  if not Assigned(AYamlDocument) then
+    Exit;
+
+  for I := 0 to Pred(AYamlDocument.Root.Count) do
+  begin
+    if AYamlDocument.Root.Elements[I].Key.ToString.ToLower.Equals('servers') then
+    begin
+      LvRootItem := AYamlDocument.Root.Elements[I].Value;
+      if LvRootItem.Count > 0 then
+      begin
+        for J := 0 to Pred(LvRootItem.Nodes[0].Count) do
+        begin
+          if LvRootItem.Nodes[0].Elements[J].Key.ToString.ToLower.Equals('url') then
+            Exit(LvRootItem.Nodes[0].Elements[J].Value.ToString.TrimRight(['/']));
+        end;
+      end;
+    end;
+  end;
 end;
 
 procedure TFrm_OCWNewProject.btnAboutClick(Sender: TObject);
@@ -282,7 +375,7 @@ begin
 
   if cbb_Version.ItemIndex < 0 then
   begin
-    ShowMessage('The OpenAPI specefication file must be provided.');
+    ShowMessage('The OpenAPI specification type must be selected.');
     cbb_Version.SelectAll;
     cbb_Version.DroppedDown := True;
     Exit;
@@ -292,42 +385,42 @@ begin
   begin
     if Trim(edt_SpecFile.Text).Equals(EmptyStr) then
     begin
-      ShowMessage('The OpenAPI specefication file must be provided.');
+      ShowMessage('The OpenAPI specification file must be provided.');
       edt_SpecFile.SetFocus;
       Exit;
     end;
 
     if not FileExists(edt_SpecFile.Text) then
     begin
-      ShowMessage('The OpenAPI specefication file doesn''t exist.');
+      ShowMessage('The OpenAPI specification file doesn''t exist.');
       edt_SpecFile.SetFocus;
       Exit;
     end;
   end
   else if Trim(edt_DocURL.Text).Equals(EmptyStr) then
   begin
-    ShowMessage('OpenAPI specefication URL must be provided.');
+    ShowMessage('OpenAPI specification URL must be provided.');
     if edt_DocURL.CanFocus then
       edt_DocURL.SetFocus;
     Exit;
+  end;
 
+  if cbb_BooleanStringForm.ItemIndex = -1 then
+  begin
+    ShowMessage('Select one approach to deal with boolean values.');
+    if cbb_BooleanStringForm.CanFocus then
+      cbb_BooleanStringForm.SetFocus;
 
-    if Trim(edt_BaseURL.Text).Equals(EmptyStr) then
-    begin
-      ShowMessage('The Base URL must be provided.');
-      if edt_BaseURL.CanFocus then
-        edt_BaseURL.SetFocus;
-      Exit;
-    end;
+    Exit;
+  end;
 
-    if cbb_BooleanStringForm.ItemIndex = -1 then
-    begin
-      ShowMessage('Select one approche to deal with boolean values.');
-      if cbb_BooleanStringForm.CanFocus then
-        cbb_BooleanStringForm.SetFocus;
+  if cbb_OutputType.ItemIndex = -1 then
+  begin
+    ShowMessage('Select the generated project type.');
+    if cbb_OutputType.CanFocus then
+      cbb_OutputType.SetFocus;
 
-      Exit;
-    end;
+    Exit;
   end;
 
   Result := True;
@@ -342,6 +435,7 @@ begin
   MarkUsed(Result);
   LvHttpClient := TNetHTTPClient.Create(nil);
   try
+    LvHttpClient.HandleRedirects := True;
     try
       LvFileStream := TFileStream.Create(ATempFileName, fmCreate);
       try

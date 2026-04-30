@@ -156,6 +156,7 @@ object Frm_OCWNewProject: TFrm_OCWNewProject
         Width = 423
         Height = 23
         TabOrder = 5
+        TextHint = 'Optional. Leave blank to use servers/host from the specification.'
       end
       object Btn_OpenFile: TButton
         Left = 425
@@ -166,13 +167,25 @@ object Frm_OCWNewProject: TFrm_OCWNewProject
         TabOrder = 6
         OnClick = Btn_OpenFileClick
       end
-      object rb_GetBaseURL: TRadioButton
+      object lbl_BaseURL: TLabel
         Left = 11
         Top = 163
-        Width = 124
-        Height = 17
-        Caption = 'Base URL(Rest GET):'
-        TabOrder = 7
+        Width = 101
+        Height = 15
+        Caption = 'Base URL (optional):'
+      end
+      object lbl_BaseURLHint: TLabel
+        Left = 118
+        Top = 163
+        Width = 331
+        Height = 15
+        Caption = 'Used only when the specification does not define a server URL.'
+        Font.Charset = DEFAULT_CHARSET
+        Font.Color = clGrayText
+        Font.Height = -12
+        Font.Name = 'Segoe UI'
+        Font.Style = []
+        ParentFont = False
       end
     end
     object grpOtherOptions: TGroupBox
@@ -194,8 +207,15 @@ object Frm_OCWNewProject: TFrm_OCWNewProject
         Top = 48
         Width = 213
         Height = 15
-        Caption = 'Add Mehtod type to function names as: '
+        Caption = 'Add Method type to function names as: '
         WordWrap = True
+      end
+      object lbl_OutputType: TLabel
+        Left = 280
+        Top = 73
+        Width = 79
+        Height = 15
+        Caption = 'Project output:'
       end
       object cbb_BooleanStringForm: TComboBox
         Left = 186
@@ -234,6 +254,20 @@ object Frm_OCWNewProject: TFrm_OCWNewProject
           'Suffix'
           'Prefix'
           'Original names')
+      end
+      object cbb_OutputType: TComboBox
+        Left = 365
+        Top = 70
+        Width = 104
+        Height = 23
+        Style = csDropDownList
+        ItemIndex = 0
+        TabOrder = 3
+        Text = 'VCL sample'
+        Items.Strings = (
+          'VCL sample'
+          'Console sample'
+          'Wrapper only')
       end
     end
   end

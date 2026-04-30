@@ -27,7 +27,7 @@ type
     function BuildFunctionBody(AMethodObj: TMethodObject): string;
     function RefineParameterList(var AParamList: string): string;
     function ConvertToCamelCase(const AInputStr: string): string;
-    function AddCastings(AParam: TParameter): string;
+    function ParameterValueExpression(AParam: TParameter; AUrlEncode: Boolean): string;
     function ConvertAuthenticationType(AAuthType: Byte): string;
     function AddBreaklines(const AText: string; ADelimitter: Char; ABreakLength: Integer = 1000): string;
 //    function GenerateRequestClass(const AJSONString: string): string;
@@ -55,6 +55,7 @@ uses
 
 function TNewModelUnitEx.ConvertAuthenticationType(AAuthType: Byte): string;
 begin
+  Result := 'No Auth';
   case AAuthType of
     0: Result := 'No Auth';
     1: Result := 'basic';
@@ -94,14 +95,17 @@ begin
     FFormName := 'Frm_Main';
 
   if AModelClassName.Equals('RestClient') then
-    FImplFileName := 'URestClient.pas';
+    FImplFileName := 'OpenAPITransport.pas';
+
+  if AModelClassName.Equals('ConsoleSample') then
+    FImplFileName := 'OpenAPISample.pas';
 
   if AModelClassName.Equals('Model') then
   begin
     FAncestorName := EmptyStr;
     FFormName := EmptyStr;
     FIntfFileName := EmptyStr;
-    FImplFileName := 'ClientClass.pas';
+    FImplFileName := 'OpenAPIClient.pas';
   end;
 
   FOpenAPIPaths:= AOpenAPIPaths;
@@ -173,6 +177,7 @@ end;
 
 function TNewModelUnitEx.GetPrefix(AMethodType: TMethodType): string;
 begin
+  Result := EmptyStr;
   if TFinalParsingObject.PrefixType = 1 then
   begin
     case AMethodType of
@@ -189,6 +194,7 @@ end;
 
 function TNewModelUnitEx.GetSuffix(AMethodType: TMethodType): string;
 begin
+  Result := EmptyStr;
   if TFinalParsingObject.PrefixType = 0 then
   begin
     case AMethodType of
@@ -203,28 +209,36 @@ begin
     Result := EmptyStr;
 end;
 
-function TNewModelUnitEx.AddCastings(AParam: TParameter): string;
+function TNewModelUnitEx.ParameterValueExpression(AParam: TParameter; AUrlEncode: Boolean): string;
 var
   LvParamName: string;
+  LvExpression: string;
 begin
   LvParamName := ConvertToCamelCase(AParam.Name);
 
   if AParam.DataType.ToLower.Equals('integer') then
-    Result := ' + A' + LvParamName + '.ToString'
+    LvExpression := 'A' + LvParamName + '.ToString'
 
   else if AParam.DataType.ToLower.Equals('string') then
-    Result := ' + A' + LvParamName
+    LvExpression := 'A' + LvParamName
 
   else if AParam.DataType.ToLower.Equals('boolean') then
-    Result := ' + CastByBooleanSetting(' + 'A' + LvParamName + ', ' + TSingletonSettingObj.Instance.BooleanStringForm.ToString +')'
+    LvExpression := 'CastByBooleanSetting(' + 'A' + LvParamName + ', ' + TSingletonSettingObj.Instance.BooleanStringForm.ToString +')'
 
   else if (AParam.DataType.ToLower.Equals('number')) or (AParam.DataType.ToLower.Equals('float')) then
-    Result := ' + FloatToStr(' + 'A' + LvParamName + ')'
+    LvExpression := 'FloatToStr(' + 'A' + LvParamName + ')'
 
   else if AParam.DataType.ToLower.Equals('array') then
-    Result := ' + [A' + LvParamName + ']'
+    LvExpression := 'String.Join('','', A' + LvParamName + ')'
+  else if AParam.DataType.ToLower.Equals('object') then
+    LvExpression := 'A' + LvParamName + '.ToString'
   else
-    Result := ' + A' + LvParamName;
+    LvExpression := 'VarToStr(A' + LvParamName + ')';
+
+  if AUrlEncode then
+    Result := 'TNetEncoding.URL.Encode(' + LvExpression + ')'
+  else
+    Result := LvExpression;
 end;
 
 function TNewModelUnitEx.BuildFunctionBody(AMethodObj: TMethodObject): string;
@@ -233,25 +247,23 @@ var
 
   LvInPathParams: string;
   LvQueryParams: string;
+  LvAddressExpression: string;
   LvHeaderParams: TStringList;
 
   LvParameterType: string;
   LvFullParamList: string;
-  LvRequestObjectSection: string;
-  LvHeaderParamsCount: string;
+  LvOptionalStatements: string;
   LvLastHeaderIndex: Integer;
-  LvHeaderParamsFinalString: string;
   I: Integer;
 begin
   Result := EmptyStr;
   LvParameterType := EmptyStr;
   LvInPathParams := EmptyStr;
   LvQueryParams := EmptyStr;
+  LvAddressExpression := 'LvStruct.ApiAddress';
   LvFullParamList:= EmptyStr;
-  LvRequestObjectSection := EmptyStr;
-  LvHeaderParamsCount := EmptyStr;
+  LvOptionalStatements := EmptyStr;
   LvLastHeaderIndex := -1;
-  LvHeaderParamsFinalString := EmptyStr;
   LvHeaderParams := TStringList.Create;
   try
     if Assigned(AMethodObj.Params) then
@@ -261,40 +273,53 @@ begin
         LvParameterType := LvParam.&In.Trim.ToLower;
 
         if LvParameterType.Equals('path') then
-          LvInPathParams := LvInPathParams + IfThen(LvInPathParams.IsEmpty, EmptyStr, ' + ') + QuotedStr('/') + AddCastings(LvParam)
+        begin
+          LvInPathParams := ParameterValueExpression(LvParam, True);
+          LvAddressExpression := Format('StringReplace(StringReplace(%s, %s, %s, [rfReplaceAll]), %s, %s, [rfReplaceAll])',
+            [LvAddressExpression, QuotedStr('{' + LvParam.Originalname + '}'), LvInPathParams,
+             QuotedStr(':' + LvParam.Originalname), LvInPathParams]);
+        end
         else if LvParameterType.Equals('query') then
         begin
           LvQueryParams := LvQueryParams +
             IfThen(LvQueryParams.IsEmpty, EmptyStr, ' + ') +
-            QuotedStr(IfThen(LvQueryParams.IsEmpty, '?', '&') + LvParam.Name + '=' ) + AddCastings(LvParam)
+            QuotedStr(IfThen(LvQueryParams.IsEmpty, '?', '&') + LvParam.Originalname + '=' ) + ' + ' + ParameterValueExpression(LvParam, True)
         end
         else if LvParameterType.Equals('header') then
         begin
           if LvLastHeaderIndex = -1 then
-            LvLastHeaderIndex := LvHeaderParams.Add('LvStruct.CustomHeaders[0] := ' + QuotedStr(LvParam.Originalname + ': ') + '+ ' + 'A' + LvParam.Name + ';')
+          begin
+            LvLastHeaderIndex := 0;
+            LvHeaderParams.Add('LvStruct.CustomHeaders[0] := ' + QuotedStr(LvParam.Originalname) + ';');
+            LvHeaderParams.Add('LvStruct.CustomHeaders[1] := ' + ParameterValueExpression(LvParam, False) + ';');
+          end
           else
-            LvLastHeaderIndex := LvHeaderParams.Add('LvStruct.CustomHeaders[' + (LvLastHeaderIndex + 1).ToString + '] := ' + QuotedStr(LvParam.Originalname + ': ') + '+ ' + 'A' + LvParam.Name + ';')
+          begin
+            Inc(LvLastHeaderIndex, 2);
+            LvHeaderParams.Add('LvStruct.CustomHeaders[' + LvLastHeaderIndex.ToString + '] := ' + QuotedStr(LvParam.Originalname) + ';');
+            LvHeaderParams.Add('LvStruct.CustomHeaders[' + (LvLastHeaderIndex + 1).ToString + '] := ' + ParameterValueExpression(LvParam, False) + ';');
+          end;
         end;
       end;
     end;
 
-    LvFullParamList := LvInPathParams + IfThen((LvInPathParams.Trim.IsEmpty or LvQueryParams.Trim.IsEmpty), EmptyStr, ' + ') +  LvQueryParams;
-    LvFullParamList := IfThen(LvFullParamList.Trim.IsEmpty, EmptyStr, Concat(' + ', LvFullParamList.TrimRight));
+    LvFullParamList := LvAddressExpression + IfThen(LvQueryParams.Trim.IsEmpty, EmptyStr, ' + ' + LvQueryParams);
 
     if (AMethodObj.RequestBody.Properties.Count > 0) or (not AMethodObj.RequestBody.Example.IsEmpty) then
-      LvRequestObjectSection := 'LvStruct.RequestObject := ARequestObj;' + sLineBreak;
+      LvOptionalStatements := LvOptionalStatements + '    LvStruct.RequestObject := ARequestObj;' + sLineBreak;
 
-    LvHeaderParamsCount := IfThen(LvHeaderParams.Count = 0, EmptyStr, 'LvStruct.CustomHeadersCount := ' + LvHeaderParams.Count.ToString + ';');
+    if LvHeaderParams.Count > 0 then
+      LvOptionalStatements := LvOptionalStatements + '    LvStruct.CustomHeadersCount := ' + LvHeaderParams.Count.ToString + ';' + sLineBreak;
 
     for I := 0 to Pred(LvHeaderParams.Count) do
-      LvHeaderParamsFinalString := LvHeaderParamsFinalString + IfThen(LvHeaderParamsFinalString.IsEmpty, LvHeaderParams[I] , '    ' + LvHeaderParams[I]) + sLineBreak;
+      LvOptionalStatements := LvOptionalStatements + '    ' + LvHeaderParams[I] + sLineBreak;
 
     case AMethodObj.MethodType of
-      mtGet: Result := Format(sGetFunctionBody, [AMethodObj._MethodName, LvFullParamList, LvRequestObjectSection, LvHeaderParamsCount, LvHeaderParamsFinalString.TrimRight]);
-      mtPost: Result := Format(sPostFunctionBody, [AMethodObj._MethodName, LvFullParamList, LvRequestObjectSection, LvHeaderParamsCount, LvHeaderParamsFinalString.TrimRight]);
-      mtPatch: Result := Format(sPatchFunctionBody, [AMethodObj._MethodName, LvFullParamList, LvRequestObjectSection, LvHeaderParamsCount, LvHeaderParamsFinalString.TrimRight]);
-      mtPut: Result := Format(sPutFunctionBody, [AMethodObj._MethodName, LvFullParamList, LvRequestObjectSection, LvHeaderParamsCount, LvHeaderParamsFinalString.TrimRight]);
-      mtDelete: Result := Format(sDeleteFunctionBody, [AMethodObj._MethodName, LvFullParamList, LvRequestObjectSection, LvHeaderParamsCount, LvHeaderParamsFinalString.TrimRight]);
+      mtGet: Result := Format(sGetFunctionBody, [AMethodObj._MethodName, LvFullParamList, LvOptionalStatements]);
+      mtPost: Result := Format(sPostFunctionBody, [AMethodObj._MethodName, LvFullParamList, LvOptionalStatements]);
+      mtPatch: Result := Format(sPatchFunctionBody, [AMethodObj._MethodName, LvFullParamList, LvOptionalStatements]);
+      mtPut: Result := Format(sPutFunctionBody, [AMethodObj._MethodName, LvFullParamList, LvOptionalStatements]);
+      mtDelete: Result := Format(sDeleteFunctionBody, [AMethodObj._MethodName, LvFullParamList, LvOptionalStatements]);
     end;
 
     if Result.IsEmpty then
@@ -359,6 +384,9 @@ begin
   begin
     LvUnitContent := sRestClientPartOne + sRestClientPartTwo;
     Result := TSourceFile.Create(LvUnitContent, ['OCW']);
+  end else if FModelClassName.Equals('ConsoleSample') then
+  begin
+    Result := TSourceFile.Create(sConsoleSampleUnit, [TSingletonSettingObj.Instance.ConsoleSampleCall]);
   end;
 end;
 
@@ -441,7 +469,7 @@ begin
           LvBtnDefinitionLines := LvBtnDefinitionLines + sLineBreak + Format('    procedure %0:sClick(Sender: TObject);', ['Btn_' + LvBtnName]);
           LvTempStr:= GetPrefix(LvMethod.MethodType) + LvBtnName + GetSuffix(LvMethod.MethodType) + '(' + LvParamSampleaValueFinalList + ')';
           LvBtnCallLines := LvBtnCallLines + sLineBreak + Format(sButtonOnClickEvent, ['Btn_' + LvBtnName, LvTempStr]);
-          LvButtonsCreationLines := LvButtonsCreationLines + '  AddButton(' +  QuotedStr('Btn_' + LvBtnName) + ', ' + 'Btn_' + LvBtnName + 'Click);' + sLineBreak;
+          LvButtonsCreationLines := LvButtonsCreationLines + '  AddButton(' +  QuotedStr(GetPrefix(LvMethod.MethodType) + LvBtnName + GetSuffix(LvMethod.MethodType)) + ', ' + 'Btn_' + LvBtnName + 'Click);' + sLineBreak;
         end;
       end;
     end

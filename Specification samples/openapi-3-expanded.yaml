@@ -1,0 +1,89 @@
+openapi: 3.0.3
+info:
+  title: Expanded Store API
+  version: 2.0.0
+servers:
+  - url: https://api.example.com/v2
+paths:
+  /products:
+    get:
+      operationId: listProducts
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+        - name: X-Trace-Id
+          in: header
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Product list
+    post:
+      operationId: createProduct
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                price:
+                  type: number
+                tags:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '201':
+          description: Created
+  /products/{productId}:
+    parameters:
+      - name: productId
+        in: path
+        required: true
+        schema:
+          type: integer
+    get:
+      operationId: getProduct
+      responses:
+        '200':
+          description: Product
+    put:
+      operationId: replaceProduct
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Replaced
+    patch:
+      operationId: updateProduct
+      parameters:
+        - name: validateOnly
+          in: query
+          schema:
+            type: boolean
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Updated
+    delete:
+      operationId: deleteProduct
+      responses:
+        '204':
+          description: Deleted

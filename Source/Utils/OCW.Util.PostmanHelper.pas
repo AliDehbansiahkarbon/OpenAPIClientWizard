@@ -123,6 +123,8 @@ type
     FInfo: TJSONValue;
     FItems: TObjectList<TPostmanItem>;
     FVariables: TJSONValue; // Add Variables property
+    procedure LoadLegacyRequest(AItem: TPostmanItem; ARequestJsonObj: TJSONObject);
+    procedure LoadLegacyUrl(AUrl: TPostmanUrl; const ARawUrl: string);
   public
     constructor Create;
     destructor Destroy; override;
@@ -188,6 +190,7 @@ procedure TPostmanCollection.LoadFromJson(AJsonValue: TJSONObject);
 var
   LvItem: TPostmanItem;
   LvItemsArray: TJSONArray;
+  LvRequestsArray: TJSONArray;
   LvJsonObj: TJSONObject;
   I: Integer;
 begin
@@ -213,10 +216,27 @@ begin
           if LvItemsArray.Items[I] is TJSONObject  then
           begin
             LvItem := TPostmanItem.Create;
-            LoadValues(LvItem, (LvItemsArray.Items[I] as TJSONObject))
+            LoadValues(LvItem, (LvItemsArray.Items[I] as TJSONObject));
           end
           else if LvItemsArray.Items[I] is TJSONArray  then
             LoadItem(LvItemsArray.Items[I] as TJSONArray);
+        end;
+      end;
+
+      if Assigned(LvJsonObj.FindValue(cPostman_Requests)) then
+      begin
+        LvRequestsArray := LvJsonObj.FindValue(cPostman_Requests) as TJSONArray;
+        for I := 0 to Pred(LvRequestsArray.Count) do
+        begin
+          if LvRequestsArray.Items[I] is TJSONObject then
+          begin
+            LvItem := TPostmanItem.Create;
+            LoadLegacyRequest(LvItem, LvRequestsArray.Items[I] as TJSONObject);
+            if Assigned(LvItem.Request) then
+              FItems.Add(LvItem)
+            else
+              LvItem.Free;
+          end;
         end;
       end;
     except on E: Exception do
@@ -241,12 +261,132 @@ begin
       begin
         LvItem := TPostmanItem.Create;
         LoadValues(LvItem, AItemsJsonObj.Items[I] as TJSONObject);
-        FItems.Add(LvItem);
       end
       else if AItemsJsonObj.Items[I] is TJSONArray then
         LoadItem(AItemsJsonObj.Items[I] as TJSONArray);
     end;
   end;
+end;
+
+procedure TPostmanCollection.LoadLegacyRequest(AItem: TPostmanItem; ARequestJsonObj: TJSONObject);
+begin
+  if not Assigned(ARequestJsonObj) then
+    Exit;
+
+  if Assigned(ARequestJsonObj.FindValue(cPostman_Name)) then
+    AItem.Name := StringReplace(ARequestJsonObj.FindValue(cPostman_Name).Value.Trim, ' ', '_', [rfReplaceAll, rfIgnoreCase])
+  else if Assigned(ARequestJsonObj.FindValue(cPostman_Id)) then
+    AItem.Name := StringReplace(ARequestJsonObj.FindValue(cPostman_Id).Value.Trim, ' ', '_', [rfReplaceAll, rfIgnoreCase]);
+
+  AItem.Request := TPostmanRequest.Create;
+  AItem.Request.Method := ARequestJsonObj.GetFindValue(cPostman_Method);
+
+  if Assigned(ARequestJsonObj.FindValue(cPostman_Url)) then
+    LoadLegacyUrl(AItem.Request.Url, ARequestJsonObj.GetFindValue(cPostman_Url));
+
+  if Assigned(ARequestJsonObj.FindValue(cPostman_Header)) then
+    AItem.Request.Header := ARequestJsonObj.GetValue(cPostman_Header);
+
+  if Assigned(ARequestJsonObj.FindValue('rawModeData')) then
+    AItem.Request.Body.Raw := ARequestJsonObj.GetFindValue('rawModeData');
+end;
+
+procedure TPostmanCollection.LoadLegacyUrl(AUrl: TPostmanUrl; const ARawUrl: string);
+var
+  LvUrl: string;
+  LvPath: string;
+  LvQuery: string;
+  LvSegment: string;
+  LvQueryPart: string;
+  LvKey: string;
+  LvValue: string;
+  LvProtocolPos: Integer;
+  LvPathPos: Integer;
+  LvQueryPos: Integer;
+  LvEqualsPos: Integer;
+  LvPathParts: TArray<string>;
+  LvQueryParts: TArray<string>;
+  LvPathArray: TJSONArray;
+  LvQueryArray: TJSONArray;
+  LvVariableArray: TJSONArray;
+  LvJsonObj: TJSONObject;
+begin
+  if not Assigned(AUrl) then
+    Exit;
+
+  AUrl.Raw := ARawUrl;
+  LvUrl := ARawUrl.Trim;
+  LvProtocolPos := Pos('://', LvUrl);
+  if LvProtocolPos > 0 then
+  begin
+    AUrl.Protocol := Copy(LvUrl, 1, LvProtocolPos - 1);
+    LvPathPos := Pos('/', Copy(LvUrl, LvProtocolPos + 3, MaxInt));
+    if LvPathPos > 0 then
+      LvPath := Copy(LvUrl, LvProtocolPos + 2 + LvPathPos, MaxInt)
+    else
+      LvPath := EmptyStr;
+  end
+  else
+    LvPath := LvUrl;
+
+  LvQueryPos := Pos('?', LvPath);
+  if LvQueryPos > 0 then
+  begin
+    LvQuery := Copy(LvPath, LvQueryPos + 1, MaxInt);
+    LvPath := Copy(LvPath, 1, LvQueryPos - 1);
+  end
+  else
+    LvQuery := EmptyStr;
+
+  LvPathArray := TJSONArray.Create;
+  LvVariableArray := TJSONArray.Create;
+  LvPathParts := LvPath.Split(['/']);
+  for LvSegment in LvPathParts do
+  begin
+    if LvSegment.Trim.IsEmpty then
+      Continue;
+
+    LvPathArray.Add(LvSegment);
+    if LvSegment.StartsWith(':') then
+    begin
+      LvJsonObj := TJSONObject.Create;
+      LvJsonObj.AddPair(cPostman_Key, Copy(LvSegment, 2, MaxInt));
+      LvJsonObj.AddPair(cPostman_Value, EmptyStr);
+      LvVariableArray.AddElement(LvJsonObj);
+    end;
+  end;
+
+  LvQueryArray := TJSONArray.Create;
+  if not LvQuery.Trim.IsEmpty then
+  begin
+    LvQueryParts := LvQuery.Split(['&']);
+    for LvQueryPart in LvQueryParts do
+    begin
+      if LvQueryPart.Trim.IsEmpty then
+        Continue;
+
+      LvEqualsPos := Pos('=', LvQueryPart);
+      if LvEqualsPos > 0 then
+      begin
+        LvKey := Copy(LvQueryPart, 1, LvEqualsPos - 1);
+        LvValue := Copy(LvQueryPart, LvEqualsPos + 1, MaxInt);
+      end
+      else
+      begin
+        LvKey := LvQueryPart;
+        LvValue := EmptyStr;
+      end;
+
+      LvJsonObj := TJSONObject.Create;
+      LvJsonObj.AddPair(cPostman_Key, LvKey);
+      LvJsonObj.AddPair(cPostman_Value, LvValue);
+      LvQueryArray.AddElement(LvJsonObj);
+    end;
+  end;
+
+  AUrl.Path := LvPathArray;
+  AUrl.Query := LvQueryArray;
+  AUrl.Variable := LvVariableArray;
 end;
 
 procedure TPostmanCollection.LoadValues(AItem: TPostmanItem; AItemsJsonObj: TJSONObject);
@@ -257,9 +397,6 @@ var
 begin
   if Assigned(AItemsJsonObj) then
   begin
-    if not Assigned(AItemsJsonObj.FindValue(cPostman_Request)) then
-      Exit;
-
     // Load item properties
     if Assigned(AItemsJsonObj.FindValue(cPostman_Name)) then
       AItem.Name := StringReplace(AItemsJsonObj.FindValue(cPostman_Name).Value.Trim, ' ', '_', [rfReplaceAll, rfIgnoreCase]);
@@ -349,7 +486,11 @@ begin
       else if AItemsJsonObj.GetValue(cPostman_Item) is TJSONArray then
         LoadItem(AItemsJsonObj.FindValue(cPostman_Item) as TJSONArray);
     end;
-    FItems.Add(AItem);
+
+    if Assigned(AItem.Request) then
+      FItems.Add(AItem)
+    else
+      AItem.Free;
   end;
 end;
 

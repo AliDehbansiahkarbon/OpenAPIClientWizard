@@ -27,7 +27,8 @@ implementation
 uses
   System.SysUtils,
   OCW.CodeGen.SourceFile,
-  OCW.CodeGen.Templates;
+  OCW.CodeGen.Templates,
+  OCW.Util.Setting;
 
 { TOCWProjectFile }
 
@@ -44,12 +45,22 @@ end;
 
 function TOCWProjectFile.GetFrameworkType: string;
 begin
-  Result := 'VCL';
+  if TSingletonSettingObj.Instance.OutputType = potSampleVCL then
+    Result := 'VCL'
+  else
+    Result := EmptyStr;
 end;
 
 function TOCWProjectFile.NewProjectSource(const ProjectName: string): IOTAFile;
 begin
-  Result := TSourceFile.Create(sOCWPR, [ProjectName, 'OCW', 'OCW']);
+  case TSingletonSettingObj.Instance.OutputType of
+    potSampleConsole:
+      Result := TSourceFile.Create(sConsolePR, [ProjectName]);
+    potWrapperOnly:
+      Result := TSourceFile.Create(sWrapperOnlyPR, [ProjectName]);
+  else
+    Result := TSourceFile.Create(sOCWPR, [ProjectName, 'OCW', 'OCW']);
+  end;
 end;
 
 end.

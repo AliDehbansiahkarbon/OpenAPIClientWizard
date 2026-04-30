@@ -1,0 +1,67 @@
+{
+  "info": {
+    "name": "Store API Collection",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Orders",
+      "item": [
+        {
+          "name": "Get Order",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "https://api.example.com/v1/orders/:orderId?includeItems=true",
+              "protocol": "https",
+              "host": ["api", "example", "com"],
+              "path": ["v1", "orders", ":orderId"],
+              "variable": [
+                {
+                  "key": "orderId",
+                  "value": "1001",
+                  "description": "Order identifier"
+                }
+              ],
+              "query": [
+                {
+                  "key": "includeItems",
+                  "value": "true",
+                  "description": "Include order lines"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Order",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Idempotency-Key",
+                "value": "demo-key",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"customerId\":42,\"status\":\"new\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "https://api.example.com/v1/orders",
+              "protocol": "https",
+              "host": ["api", "example", "com"],
+              "path": ["v1", "orders"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

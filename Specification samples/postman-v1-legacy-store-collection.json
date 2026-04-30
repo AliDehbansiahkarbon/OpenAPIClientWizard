@@ -1,0 +1,26 @@
+{
+  "id": "legacy-store-api",
+  "name": "Legacy Store API Collection v1",
+  "order": ["list-products", "get-product", "create-product"],
+  "requests": [
+    {
+      "id": "list-products",
+      "name": "List Products",
+      "method": "GET",
+      "url": "https://api.example.com/v1/products?search=demo&active=true"
+    },
+    {
+      "id": "get-product",
+      "name": "Get Product",
+      "method": "GET",
+      "url": "https://api.example.com/v1/products/:productId"
+    },
+    {
+      "id": "create-product",
+      "name": "Create Product",
+      "method": "POST",
+      "url": "https://api.example.com/v1/products",
+      "rawModeData": "{\"name\":\"Legacy product\",\"price\":49.95}"
+    }
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "info": {
+    "name": "Store API Collection v2.0",
+    "schema": "https://schema.getpostman.com/json/collection/v2.0.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "List Products",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "X-Trace-Id", "value": "trace-demo" }
+        ],
+        "url": {
+          "raw": "https://api.example.com/v2/products?search=demo&limit=10",
+          "protocol": "https",
+          "host": ["api", "example", "com"],
+          "path": ["v2", "products"],
+          "query": [
+            { "key": "search", "value": "demo" },
+            { "key": "limit", "value": "10" }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Update Product",
+      "request": {
+        "method": "PATCH",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"name\":\"Updated product\",\"price\":99.95}"
+        },
+        "url": {
+          "raw": "https://api.example.com/v2/products/:productId?validateOnly=false",
+          "protocol": "https",
+          "host": ["api", "example", "com"],
+          "path": ["v2", "products", ":productId"],
+          "variable": [
+            { "key": "productId", "value": "1001" }
+          ],
+          "query": [
+            { "key": "validateOnly", "value": "false" }
+          ]
+        }
+      }
+    }
+  ]
+}
