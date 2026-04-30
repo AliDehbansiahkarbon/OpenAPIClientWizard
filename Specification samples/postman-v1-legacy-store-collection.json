@@ -20,7 +20,7 @@
       "name": "Create Product",
       "method": "POST",
       "url": "https://api.example.com/v1/products",
-      "rawModeData": "{\"name\":\"Legacy product\",\"price\":49.95}"
+      "rawModeData": "{\"name\":\"Legacy product\",\"price\":49.95,\"dimensions\":{\"width\":10,\"height\":3,\"depth\":2},\"tags\":[\"legacy\",\"sample\"]}"
     }
   ]
 }

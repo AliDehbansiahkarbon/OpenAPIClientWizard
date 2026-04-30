@@ -219,8 +219,8 @@ begin
       end;
       2:
       begin
-        DisplayName := 'OpenAPI Yaml File';
-        FileMask := '*.Yaml';
+        DisplayName := 'OpenAPI YAML File (*.yaml; *.yml)';
+        FileMask := '*.yaml;*.yml';
       end;
       3:
       begin

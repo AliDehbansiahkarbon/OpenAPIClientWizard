@@ -9,7 +9,7 @@ interface
 
 uses
   System.Classes, Vcl.Dialogs, VCL.Graphics, System.JSON, System.SysUtils,
-  System.IOUtils, VCL.Controls, VCL.Forms, WinApi.Windows, System.Rtti,
+  System.IOUtils, VCL.Controls, VCL.Forms, WinApi.Windows, System.Rtti, System.StrUtils,
   PlatformAPI, ToolsApi, DccStrs, ExpertsRepository, System.Generics.Collections,
 
   OCW.Forms.NewProjectWizard,
@@ -105,7 +105,33 @@ var
   LvDataType: string;
   LvMenuLines: string;
   LvCaseLines: string;
+  LvVarLines: string;
   LvSampleIndex: Integer;
+
+  function CleanDelphiIdentifier(const AValue, AFallback: string): string;
+  var
+    I: Integer;
+  begin
+    Result := AValue.Trim;
+    for I := 1 to Length(Result) do
+    begin
+      if not CharInSet(Result[I], ['a'..'z', 'A'..'Z', '0'..'9', '_']) then
+        Result[I] := '_';
+    end;
+
+    if Result.IsEmpty then
+      Result := AFallback;
+
+    if not CharInSet(Result[1], ['a'..'z', 'A'..'Z', '_']) then
+      Result := '_' + Result;
+  end;
+
+  function DelphiClassName(const AValue: string): string;
+  begin
+    Result := CleanDelphiIdentifier(AValue, 'OpenAPIRequest');
+    if not Result.StartsWith('T') then
+      Result := 'T' + Result;
+  end;
 
   function BuildMethodName(AMethod: TMethodObject): string;
   begin
@@ -129,6 +155,19 @@ var
           mtDelete: Result := 'Delete_' + Result;
         end;
     end;
+  end;
+
+  function BuildRequestClassName(AMethod: TMethodObject): string;
+  begin
+    Result := DelphiClassName(BuildMethodName(AMethod) + 'Request');
+  end;
+
+  function HasRequestBody(AMethod: TMethodObject): Boolean;
+  begin
+    Result := Assigned(AMethod) and Assigned(AMethod.RequestBody) and
+              ((AMethod.RequestBody.Properties.Count > 0) or
+               (not AMethod.RequestBody.SchemaJson.Trim.IsEmpty) or
+               (not AMethod.RequestBody.Example.Trim.IsEmpty));
   end;
 
   function BuildSampleParams(AMethod: TMethodObject): string;
@@ -158,16 +197,25 @@ var
       else
         Result := Result + 'nil';
     end;
+
+    if HasRequestBody(AMethod) then
+    begin
+      if not Result.IsEmpty then
+        Result := Result + ', ';
+      Result := Result + 'RequestObj' + LvSampleIndex.ToString;
+    end;
   end;
 begin
   TSingletonSettingObj.Instance.ConsoleSampleCall :=
     '    Writeln(''OpenAPI client wrapper is ready. Call the generated methods on Client.'');' + sLineBreak;
+  TSingletonSettingObj.Instance.ConsoleSampleVars := EmptyStr;
 
   if not Assigned(GlobalTempOpenAPIPathObjects) then
     Exit;
 
   LvMenuLines := EmptyStr;
   LvCaseLines := EmptyStr;
+  LvVarLines := EmptyStr;
   LvSampleIndex := 0;
 
   for LvKey in GlobalTempOpenAPIPathObjects.Keys do
@@ -182,6 +230,10 @@ begin
       LvMethodName := BuildMethodName(LvMethod);
       LvParams := BuildSampleParams(LvMethod);
 
+      if HasRequestBody(LvMethod) then
+        LvVarLines := LvVarLines +
+          '  RequestObj' + LvSampleIndex.ToString + ': ' + BuildRequestClassName(LvMethod) + ';' + sLineBreak;
+
       LvMenuLines := LvMenuLines +
         '    Writeln(' + QuotedStr(Format('  %d. %s', [LvSampleIndex, LvMethodName])) + ');' + sLineBreak;
 
@@ -189,8 +241,17 @@ begin
         '      ' + LvSampleIndex.ToString + ':' + sLineBreak +
         '        begin' + sLineBreak +
         '          Writeln(' + QuotedStr('Calling ' + LvMethodName + '...') + ');' + sLineBreak +
+        IfThen(HasRequestBody(LvMethod),
+          '          RequestObj' + LvSampleIndex.ToString + ' := ' + BuildRequestClassName(LvMethod) + '.Create;' + sLineBreak +
+          '          try' + sLineBreak,
+          EmptyStr) +
         '          Response := Client.' + LvMethodName + '(' + LvParams + ');' + sLineBreak +
         '          Writeln(Response);' + sLineBreak +
+        IfThen(HasRequestBody(LvMethod),
+          '          finally' + sLineBreak +
+          '            RequestObj' + LvSampleIndex.ToString + '.Free;' + sLineBreak +
+          '          end;' + sLineBreak,
+          EmptyStr) +
         '        end;' + sLineBreak;
     end;
   end;
@@ -198,6 +259,7 @@ begin
   if LvSampleIndex = 0 then
     Exit;
 
+  TSingletonSettingObj.Instance.ConsoleSampleVars := LvVarLines;
   TSingletonSettingObj.Instance.ConsoleSampleCall :=
     '    Writeln(''OpenAPI API usage samples:'');' + sLineBreak +
     LvMenuLines +

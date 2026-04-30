@@ -28,6 +28,10 @@ type
     function RefineParameterList(var AParamList: string): string;
     function ConvertToCamelCase(const AInputStr: string): string;
     function ParameterValueExpression(AParam: TParameter; AUrlEncode: Boolean): string;
+    function HasRequestBody(AMethodObj: TMethodObject): Boolean;
+    function RequestClassName(AMethodObj: TMethodObject): string;
+    function BuildRequestClassSample(const AClassName: string): string;
+    procedure GenerateRequestClasses(AMethodObj: TMethodObject; ADefinitions, AImplementations: TStringBuilder; AKnownClasses: TDictionary<string, Boolean>);
     function ConvertAuthenticationType(AAuthType: Byte): string;
     function AddBreaklines(const AText: string; ADelimitter: Char; ABreakLength: Integer = 1000): string;
 //    function GenerateRequestClass(const AJSONString: string): string;
@@ -305,7 +309,7 @@ begin
 
     LvFullParamList := LvAddressExpression + IfThen(LvQueryParams.Trim.IsEmpty, EmptyStr, ' + ' + LvQueryParams);
 
-    if (AMethodObj.RequestBody.Properties.Count > 0) or (not AMethodObj.RequestBody.Example.IsEmpty) then
+    if HasRequestBody(AMethodObj) then
       LvOptionalStatements := LvOptionalStatements + '    LvStruct.RequestObject := ARequestObj;' + sLineBreak;
 
     if LvHeaderParams.Count > 0 then
@@ -386,7 +390,394 @@ begin
     Result := TSourceFile.Create(LvUnitContent, ['OCW']);
   end else if FModelClassName.Equals('ConsoleSample') then
   begin
-    Result := TSourceFile.Create(sConsoleSampleUnit, [TSingletonSettingObj.Instance.ConsoleSampleCall]);
+    Result := TSourceFile.Create(sConsoleSampleUnit, [TSingletonSettingObj.Instance.ConsoleSampleCall,
+                                                      TSingletonSettingObj.Instance.ConsoleSampleVars]);
+  end;
+end;
+
+function CleanDelphiIdentifier(const AValue, AFallback: string): string;
+var
+  I: Integer;
+begin
+  Result := AValue.Trim;
+  for I := 1 to Length(Result) do
+  begin
+    if not CharInSet(Result[I], ['a'..'z', 'A'..'Z', '0'..'9', '_']) then
+      Result[I] := '_';
+  end;
+
+  while Result.Contains('__') do
+    Result := StringReplace(Result, '__', '_', [rfReplaceAll]);
+
+  Result := Result.Trim(['_']);
+  if Result.IsEmpty then
+    Result := AFallback;
+
+  if CharInSet(Result[1], ['0'..'9']) then
+    Result := '_' + Result;
+end;
+
+function IsDelphiReservedWord(const AIdentifier: string): Boolean;
+const
+  DelphiReservedWords: array[0..72] of string = (
+    'and', 'array', 'as', 'asm', 'begin', 'case', 'class', 'const',
+    'constructor', 'destructor', 'dispinterface', 'div', 'do', 'downto',
+    'else', 'end', 'except', 'exports', 'file', 'finalization', 'finally',
+    'for', 'function', 'goto', 'if', 'implementation', 'in', 'inherited',
+    'initialization', 'inline', 'interface', 'is', 'label', 'library',
+    'mod', 'nil', 'not', 'object', 'of', 'or', 'out', 'packed',
+    'procedure', 'program', 'property', 'raise', 'record', 'repeat',
+    'resourcestring', 'set', 'shl', 'shr', 'string', 'then', 'threadvar',
+    'to', 'try', 'type', 'unit', 'until', 'uses', 'var', 'while',
+    'with', 'xor', 'private', 'protected', 'public', 'published',
+    'automated', 'operator', 'helper', 'reference');
+var
+  I: Integer;
+begin
+  Result := False;
+  for I := Low(DelphiReservedWords) to High(DelphiReservedWords) do
+  begin
+    if SameText(AIdentifier, DelphiReservedWords[I]) then
+      Exit(True);
+  end;
+end;
+
+function DelphiEscapedIdentifier(const AIdentifier: string): string;
+begin
+  Result := AIdentifier;
+  if IsDelphiReservedWord(Result) then
+    Result := '&' + Result;
+end;
+
+function DelphiPropertyName(const AValue: string): string;
+begin
+  Result := CleanDelphiIdentifier(AValue, 'Value');
+  Result := UpperCase(Copy(Result, 1, 1)) + Copy(Result, 2, MaxInt);
+end;
+
+function DelphiClassName(const AValue: string): string;
+begin
+  Result := DelphiPropertyName(AValue);
+  if not Result.StartsWith('T') then
+    Result := 'T' + Result;
+end;
+
+function JsonPrimitiveType(AJsonValue: TJSONValue): string;
+var
+  LvText: string;
+  LvInteger: Integer;
+  LvFloat: Double;
+begin
+  Result := 'string';
+  if AJsonValue is TJSONNumber then
+  begin
+    LvText := AJsonValue.Value;
+    if TryStrToInt(LvText, LvInteger) then
+      Result := 'Integer'
+    else if TryStrToFloat(LvText, LvFloat) then
+      Result := 'Double'
+    else
+      Result := 'Double';
+  end
+  else if AJsonValue is TJSONBool then
+    Result := 'Boolean'
+  else if AJsonValue is TJSONString then
+    Result := 'string';
+end;
+
+function SchemaPrimitiveType(const ATypeName, AFormat: string): string;
+begin
+  Result := 'Variant';
+  if ATypeName.Equals('string') then
+    Result := 'string'
+  else if ATypeName.Equals('integer') then
+    Result := 'Integer'
+  else if ATypeName.Equals('number') or ATypeName.Equals('float') then
+    Result := 'Double'
+  else if ATypeName.Equals('boolean') then
+    Result := 'Boolean'
+  else if ATypeName.Equals('object') then
+    Result := 'TJsonObject'
+  else if ATypeName.Equals('array') then
+    Result := 'TArray<string>';
+end;
+
+function TNewModelUnitEx.HasRequestBody(AMethodObj: TMethodObject): Boolean;
+begin
+  Result := Assigned(AMethodObj) and Assigned(AMethodObj.RequestBody) and
+            ((not AMethodObj.RequestBody.SchemaJson.Trim.IsEmpty) or
+             (not AMethodObj.RequestBody.Example.Trim.IsEmpty) or
+             (AMethodObj.RequestBody.Properties.Count > 0));
+end;
+
+function TNewModelUnitEx.RequestClassName(AMethodObj: TMethodObject): string;
+begin
+  Result := DelphiClassName(GetPrefix(AMethodObj.MethodType) + AMethodObj._MethodName + GetSuffix(AMethodObj.MethodType) + 'Request');
+end;
+
+function TNewModelUnitEx.BuildRequestClassSample(const AClassName: string): string;
+begin
+  Result := AClassName + '.Create';
+end;
+
+procedure BuildClassFromJsonExample(const AClassName: string; AJsonObject: TJSONObject; ADefinitions, AImplementations: TStringBuilder; AKnownClasses: TDictionary<string, Boolean>); forward;
+procedure BuildClassFromJsonSchema(const AClassName: string; ASchemaObject: TJSONObject; ADefinitions, AImplementations: TStringBuilder; AKnownClasses: TDictionary<string, Boolean>); forward;
+
+function SchemaFieldType(const AOwnerClass, APropertyName: string; ASchemaValue: TJSONValue; ADefinitions, AImplementations: TStringBuilder; AKnownClasses: TDictionary<string, Boolean>; AOwnedObjects: TStrings): string;
+var
+  LvSchema: TJSONObject;
+  LvItems: TJSONValue;
+  LvType: string;
+  LvFormat: string;
+  LvChildClassName: string;
+begin
+  Result := 'Variant';
+  if not (ASchemaValue is TJSONObject) then
+    Exit;
+
+  LvSchema := ASchemaValue as TJSONObject;
+  LvType := EmptyStr;
+  LvFormat := EmptyStr;
+  if Assigned(LvSchema.FindValue('type')) then
+    LvType := LvSchema.GetValue('type').Value.ToLower;
+  if Assigned(LvSchema.FindValue('format')) then
+    LvFormat := LvSchema.GetValue('format').Value.ToLower;
+
+  if LvType.Equals('array') then
+  begin
+    Result := 'TArray<string>';
+    LvItems := LvSchema.FindValue('items');
+    if LvItems is TJSONObject then
+    begin
+      if Assigned((LvItems as TJSONObject).FindValue('properties')) or
+         (Assigned((LvItems as TJSONObject).FindValue('type')) and ((LvItems as TJSONObject).GetValue('type').Value.ToLower = 'object')) then
+      begin
+        LvChildClassName := AOwnerClass + DelphiPropertyName(APropertyName) + 'Item';
+        BuildClassFromJsonSchema(LvChildClassName, LvItems as TJSONObject, ADefinitions, AImplementations, AKnownClasses);
+        Result := 'TArray<' + LvChildClassName + '>';
+      end
+      else if Assigned((LvItems as TJSONObject).FindValue('type')) then
+        Result := 'TArray<' + SchemaPrimitiveType((LvItems as TJSONObject).GetValue('type').Value.ToLower, '') + '>';
+    end;
+    Exit;
+  end;
+
+  if Assigned(LvSchema.FindValue('properties')) or LvType.Equals('object') then
+  begin
+    LvChildClassName := AOwnerClass + DelphiPropertyName(APropertyName);
+    BuildClassFromJsonSchema(LvChildClassName, LvSchema, ADefinitions, AImplementations, AKnownClasses);
+    AOwnedObjects.Add(DelphiPropertyName(APropertyName) + '=' + LvChildClassName);
+    Exit(LvChildClassName);
+  end;
+
+  if Assigned(LvSchema.FindValue('$ref')) then
+    Exit('TObject');
+
+  Result := SchemaPrimitiveType(LvType, LvFormat);
+end;
+
+function ExampleFieldType(const AOwnerClass, APropertyName: string; AJsonValue: TJSONValue; ADefinitions, AImplementations: TStringBuilder; AKnownClasses: TDictionary<string, Boolean>; AOwnedObjects: TStrings): string;
+var
+  LvArray: TJSONArray;
+  LvChildClassName: string;
+begin
+  Result := 'string';
+  if AJsonValue is TJSONObject then
+  begin
+    LvChildClassName := AOwnerClass + DelphiPropertyName(APropertyName);
+    BuildClassFromJsonExample(LvChildClassName, AJsonValue as TJSONObject, ADefinitions, AImplementations, AKnownClasses);
+    AOwnedObjects.Add(DelphiPropertyName(APropertyName) + '=' + LvChildClassName);
+    Exit(LvChildClassName);
+  end;
+
+  if AJsonValue is TJSONArray then
+  begin
+    LvArray := AJsonValue as TJSONArray;
+    if (LvArray.Count > 0) and (LvArray.Items[0] is TJSONObject) then
+    begin
+      LvChildClassName := AOwnerClass + DelphiPropertyName(APropertyName) + 'Item';
+      BuildClassFromJsonExample(LvChildClassName, LvArray.Items[0] as TJSONObject, ADefinitions, AImplementations, AKnownClasses);
+      Exit('TArray<' + LvChildClassName + '>');
+    end;
+
+    if LvArray.Count > 0 then
+      Exit('TArray<' + JsonPrimitiveType(LvArray.Items[0]) + '>');
+
+    Exit('TArray<string>');
+  end;
+
+  Result := JsonPrimitiveType(AJsonValue);
+end;
+
+procedure AppendClassCode(const AClassName: string; AFields, AProperties, AOwnedObjects: TStrings; ADefinitions, AImplementations: TStringBuilder);
+var
+  I: Integer;
+  LvName: string;
+  LvType: string;
+  LvSeparatorPos: Integer;
+begin
+  ADefinitions.AppendLine('  ' + AClassName + ' = class');
+  ADefinitions.AppendLine('  private');
+  for I := 0 to Pred(AFields.Count) do
+    ADefinitions.AppendLine('    ' + AFields[I]);
+  ADefinitions.AppendLine('  public');
+  ADefinitions.AppendLine('    constructor Create;');
+  ADefinitions.AppendLine('    destructor Destroy; override;');
+  for I := 0 to Pred(AProperties.Count) do
+    ADefinitions.AppendLine('    ' + AProperties[I]);
+  ADefinitions.AppendLine('  end;');
+  ADefinitions.AppendLine;
+
+  AImplementations.AppendLine('constructor ' + AClassName + '.Create;');
+  AImplementations.AppendLine('begin');
+  AImplementations.AppendLine('  inherited Create;');
+  for I := 0 to Pred(AOwnedObjects.Count) do
+  begin
+    LvSeparatorPos := Pos('=', AOwnedObjects[I]);
+    LvName := Copy(AOwnedObjects[I], 1, LvSeparatorPos - 1);
+    LvType := Copy(AOwnedObjects[I], LvSeparatorPos + 1, MaxInt);
+    AImplementations.AppendLine('  F' + LvName + ' := ' + LvType + '.Create;');
+  end;
+  AImplementations.AppendLine('end;');
+  AImplementations.AppendLine;
+
+  AImplementations.AppendLine('destructor ' + AClassName + '.Destroy;');
+  AImplementations.AppendLine('begin');
+  for I := 0 to Pred(AOwnedObjects.Count) do
+  begin
+    LvSeparatorPos := Pos('=', AOwnedObjects[I]);
+    LvName := Copy(AOwnedObjects[I], 1, LvSeparatorPos - 1);
+    AImplementations.AppendLine('  F' + LvName + '.Free;');
+  end;
+  AImplementations.AppendLine('  inherited;');
+  AImplementations.AppendLine('end;');
+  AImplementations.AppendLine;
+end;
+
+procedure BuildClassFromJsonSchema(const AClassName: string; ASchemaObject: TJSONObject; ADefinitions, AImplementations: TStringBuilder; AKnownClasses: TDictionary<string, Boolean>);
+var
+  I: Integer;
+  LvProperties: TJSONObject;
+  LvProperty: TJSONPair;
+  LvPropName: string;
+  LvPropType: string;
+  LvFields: TStringList;
+  LvPropertiesList: TStringList;
+  LvOwnedObjects: TStringList;
+begin
+  if not Assigned(ASchemaObject) or AKnownClasses.ContainsKey(AClassName) then
+    Exit;
+
+  AKnownClasses.Add(AClassName, True);
+  LvFields := TStringList.Create;
+  LvPropertiesList := TStringList.Create;
+  LvOwnedObjects := TStringList.Create;
+  try
+    if ASchemaObject.FindValue('properties') is TJSONObject then
+      LvProperties := ASchemaObject.FindValue('properties') as TJSONObject
+    else
+      LvProperties := ASchemaObject;
+
+    for I := 0 to Pred(LvProperties.Count) do
+    begin
+      LvProperty := LvProperties.Pairs[I];
+      LvPropName := DelphiPropertyName(LvProperty.JsonString.Value);
+      LvPropType := SchemaFieldType(AClassName, LvProperty.JsonString.Value, LvProperty.JsonValue, ADefinitions, AImplementations, AKnownClasses, LvOwnedObjects);
+      LvFields.Add('F' + LvPropName + ': ' + LvPropType + ';');
+      LvPropertiesList.Add('property ' + DelphiEscapedIdentifier(LvPropName) + ': ' + LvPropType + ' read F' + LvPropName + ' write F' + LvPropName + ';');
+    end;
+
+    AppendClassCode(AClassName, LvFields, LvPropertiesList, LvOwnedObjects, ADefinitions, AImplementations);
+  finally
+    LvFields.Free;
+    LvPropertiesList.Free;
+    LvOwnedObjects.Free;
+  end;
+end;
+
+procedure BuildClassFromJsonExample(const AClassName: string; AJsonObject: TJSONObject; ADefinitions, AImplementations: TStringBuilder; AKnownClasses: TDictionary<string, Boolean>);
+var
+  I: Integer;
+  LvProperty: TJSONPair;
+  LvPropName: string;
+  LvPropType: string;
+  LvFields: TStringList;
+  LvPropertiesList: TStringList;
+  LvOwnedObjects: TStringList;
+begin
+  if not Assigned(AJsonObject) or AKnownClasses.ContainsKey(AClassName) then
+    Exit;
+
+  AKnownClasses.Add(AClassName, True);
+  LvFields := TStringList.Create;
+  LvPropertiesList := TStringList.Create;
+  LvOwnedObjects := TStringList.Create;
+  try
+    for I := 0 to Pred(AJsonObject.Count) do
+    begin
+      LvProperty := AJsonObject.Pairs[I];
+      LvPropName := DelphiPropertyName(LvProperty.JsonString.Value);
+      LvPropType := ExampleFieldType(AClassName, LvProperty.JsonString.Value, LvProperty.JsonValue, ADefinitions, AImplementations, AKnownClasses, LvOwnedObjects);
+      LvFields.Add('F' + LvPropName + ': ' + LvPropType + ';');
+      LvPropertiesList.Add('property ' + DelphiEscapedIdentifier(LvPropName) + ': ' + LvPropType + ' read F' + LvPropName + ' write F' + LvPropName + ';');
+    end;
+
+    AppendClassCode(AClassName, LvFields, LvPropertiesList, LvOwnedObjects, ADefinitions, AImplementations);
+  finally
+    LvFields.Free;
+    LvPropertiesList.Free;
+    LvOwnedObjects.Free;
+  end;
+end;
+
+procedure TNewModelUnitEx.GenerateRequestClasses(AMethodObj: TMethodObject; ADefinitions, AImplementations: TStringBuilder; AKnownClasses: TDictionary<string, Boolean>);
+var
+  LvJsonValue: TJSONValue;
+  LvSchemaObject: TJSONObject;
+  LvPropertiesObject: TJSONObject;
+  LvProperty: TPair<string, string>;
+  LvPropertySchema: TJSONObject;
+  LvClassName: string;
+begin
+  if not HasRequestBody(AMethodObj) then
+    Exit;
+
+  LvClassName := RequestClassName(AMethodObj);
+  LvJsonValue := nil;
+  try
+    if not AMethodObj.RequestBody.SchemaJson.Trim.IsEmpty then
+      LvJsonValue := TJSONObject.ParseJSONValue(AMethodObj.RequestBody.SchemaJson)
+    else if not AMethodObj.RequestBody.Example.Trim.IsEmpty then
+      LvJsonValue := TJSONObject.ParseJSONValue(AMethodObj.RequestBody.Example);
+
+    if LvJsonValue is TJSONObject then
+    begin
+      if Assigned((LvJsonValue as TJSONObject).FindValue('properties')) or Assigned((LvJsonValue as TJSONObject).FindValue('type')) then
+        BuildClassFromJsonSchema(LvClassName, LvJsonValue as TJSONObject, ADefinitions, AImplementations, AKnownClasses)
+      else
+        BuildClassFromJsonExample(LvClassName, LvJsonValue as TJSONObject, ADefinitions, AImplementations, AKnownClasses);
+    end
+    else if AMethodObj.RequestBody.Properties.Count > 0 then
+    begin
+      LvSchemaObject := TJSONObject.Create;
+      try
+        LvSchemaObject.AddPair('type', 'object');
+        LvPropertiesObject := TJSONObject.Create;
+        LvSchemaObject.AddPair('properties', LvPropertiesObject);
+        for LvProperty in AMethodObj.RequestBody.Properties do
+        begin
+          LvPropertySchema := TJSONObject.Create;
+          LvPropertySchema.AddPair('type', LvProperty.Value);
+          LvPropertiesObject.AddPair(LvProperty.Key, LvPropertySchema);
+        end;
+
+        BuildClassFromJsonSchema(LvClassName, LvSchemaObject, ADefinitions, AImplementations, AKnownClasses);
+      finally
+        LvSchemaObject.Free;
+      end;
+    end;
+  finally
+    LvJsonValue.Free;
   end;
 end;
 
@@ -404,7 +795,10 @@ var
   LvBtnDefinitionLines: string;
   LvButtonsCreationLines: string;
   LvParamSampleaValueFinalList: string;
-  LvRequestClasses: string;
+  LvRequestVarLines: string;
+  LvRequestCreateLines: string;
+  LvRequestFreeLines: string;
+  LvRequestClassName: string;
 begin
   Result := sMainUnit;
   LvBtnName := EmptyStr;
@@ -413,7 +807,10 @@ begin
   LvBtnDefinitionLines := EmptyStr;
   LvButtonsCreationLines := EmptyStr;
   LvParamSampleaValueFinalList := EmptyStr;
-  LvRequestClasses := EmptyStr;
+  LvRequestVarLines := EmptyStr;
+  LvRequestCreateLines := EmptyStr;
+  LvRequestFreeLines := EmptyStr;
+  LvRequestClassName := EmptyStr;
 
   for LvKey in FOpenAPIPaths.Keys do
   begin
@@ -430,6 +827,9 @@ begin
         begin
           LvBtnName := LvMethod._MethodName;
           LvParamSampleaValueFinalList := EmptyStr;
+          LvRequestVarLines := EmptyStr;
+          LvRequestCreateLines := EmptyStr;
+          LvRequestFreeLines := EmptyStr;
 
           if Assigned(LvMethod.Params) then
           begin
@@ -457,18 +857,24 @@ begin
             end;
           end;
 
-          if (not LvMethod.RequestBody.Example.IsEmpty) and (TFinalParsingObject.Instance.FinalObjectType = atPostManCollection) then
+          if HasRequestBody(LvMethod) then
           begin
-            //LvRequestClasses := LvRequestClasses + IfThen(LvRequestClasses.IsEmpty, '', sLineBreak) + GenerateRequestClass(LvMethod.RequestBody.Example);
+            LvRequestClassName := RequestClassName(LvMethod);
             if LvParamSampleaValueFinalList.IsEmpty then
-              LvParamSampleaValueFinalList := 'TObject.Create{Create/pass you real request object here}'
+              LvParamSampleaValueFinalList := 'LvRequestObj'
             else
-              LvParamSampleaValueFinalList := LvParamSampleaValueFinalList + ',TObject.Create{Create/pass you real request object here}';
+              LvParamSampleaValueFinalList := LvParamSampleaValueFinalList + ', LvRequestObj';
+
+            LvRequestVarLines := '  LvRequestObj: ' + LvRequestClassName + ';' + sLineBreak;
+            LvRequestCreateLines := '  LvRequestObj := ' + BuildRequestClassSample(LvRequestClassName) + ';' + sLineBreak;
+            LvRequestFreeLines := '    LvRequestObj.Free;' + sLineBreak;
           end;
 
           LvBtnDefinitionLines := LvBtnDefinitionLines + sLineBreak + Format('    procedure %0:sClick(Sender: TObject);', ['Btn_' + LvBtnName]);
           LvTempStr:= GetPrefix(LvMethod.MethodType) + LvBtnName + GetSuffix(LvMethod.MethodType) + '(' + LvParamSampleaValueFinalList + ')';
-          LvBtnCallLines := LvBtnCallLines + sLineBreak + Format(sButtonOnClickEvent, ['Btn_' + LvBtnName, LvTempStr]);
+          LvBtnCallLines := LvBtnCallLines + sLineBreak + Format(sButtonOnClickEvent, ['Btn_' + LvBtnName, LvTempStr,
+                                                                                       LvRequestVarLines, LvRequestCreateLines,
+                                                                                       LvRequestFreeLines]);
           LvButtonsCreationLines := LvButtonsCreationLines + '  AddButton(' +  QuotedStr(GetPrefix(LvMethod.MethodType) + LvBtnName + GetSuffix(LvMethod.MethodType)) + ', ' + 'Btn_' + LvBtnName + 'Click);' + sLineBreak;
         end;
       end;
@@ -504,6 +910,10 @@ var
   LvParameterDataType: string;
   LvParamFinalList: string;
   LvMethodListAddition: string;
+  LvRequestClassName: string;
+  LvRequestClassDefinitions: TStringBuilder;
+  LvRequestClassImplementations: TStringBuilder;
+  LvKnownRequestClasses: TDictionary<string, Boolean>;
 
   LvSetting: TSingletonSettingObj;
 begin
@@ -517,6 +927,10 @@ begin
   LvAllDeleteFunctionImplementation := EmptyStr;
   LvParamFinalList := EmptyStr;
   LvMethodListAddition := EmptyStr;
+  LvRequestClassDefinitions := TStringBuilder.Create;
+  LvRequestClassImplementations := TStringBuilder.Create;
+  LvKnownRequestClasses := TDictionary<string, Boolean>.Create;
+  try
 
   for LvKey in FOpenAPIPaths.Keys do
   begin
@@ -526,6 +940,7 @@ begin
     begin
       for LvMethod in LvOpenAPIPathObject.Methods do
       begin
+        GenerateRequestClasses(LvMethod, LvRequestClassDefinitions, LvRequestClassImplementations, LvKnownRequestClasses);
         LvParamFinalList := EmptyStr;
         if Assigned(LvMethod.Params) then
         begin
@@ -551,25 +966,26 @@ begin
         RefineParameterList(LvParamFinalList);
         if Assigned(LvMethod.RequestBody) then
         begin
+          LvRequestClassName := RequestClassName(LvMethod);
           if Assigned(LvMethod.RequestBody.Properties) then
           begin
-            if LvMethod.RequestBody.Properties.Count > 0 then
+            if HasRequestBody(LvMethod) then
             begin
               if not LvParamFinalList.IsEmpty then
-                LvParamFinalList := Concat('(', LvParamFinalList, '; ARequestObj: TObject = nil', ')')
+                LvParamFinalList := Concat('(', LvParamFinalList, '; ARequestObj: ', LvRequestClassName, ' = nil', ')')
               else
-                LvParamFinalList := '(ARequestObj: TObject = nil)';
+                LvParamFinalList := '(ARequestObj: ' + LvRequestClassName + ' = nil)';
             end
             else if not LvParamFinalList.IsEmpty then
               LvParamFinalList := Concat('(', LvParamFinalList, ')');
           end;
 
-          if (not LvMethod.RequestBody.Example.IsEmpty) and (not LvParamFinalList.Contains('ARequestObj: TObject')) then
+          if (not LvMethod.RequestBody.Example.IsEmpty) and (not LvParamFinalList.Contains('ARequestObj:')) then
           begin
             if not LvParamFinalList.IsEmpty then
-              LvParamFinalList := Concat('(', LvParamFinalList, '; ARequestObj: TObject = nil', ')')
+              LvParamFinalList := Concat('(', LvParamFinalList, '; ARequestObj: ', LvRequestClassName, ' = nil', ')')
             else
-              LvParamFinalList := '(ARequestObj: TObject = nil)';
+              LvParamFinalList := '(ARequestObj: ' + LvRequestClassName + ' = nil)';
           end;
         end;
 
@@ -658,7 +1074,14 @@ begin
                                 IfThen(LvAllPostFunctionImplementation.Trim.Equals(EmptyStr), '', AddBreaklines(LvAllPostFunctionImplementation, '+') + sLineBreak),
                                 IfThen(LvAllPatchFunctionImplementation.Trim.Equals(EmptyStr), '', AddBreaklines(LvAllPatchFunctionImplementation, '+') + sLineBreak),
                                 IfThen(LvAllPutFunctionImplementation.Trim.Equals(EmptyStr), '', AddBreaklines(LvAllPutFunctionImplementation, '+') + sLineBreak),
-                                IfThen(LvAllDeleteFunctionImplementation.Trim.Equals(EmptyStr), '', AddBreaklines(LvAllDeleteFunctionImplementation, '+') + sLineBreak)]);
+                                IfThen(LvAllDeleteFunctionImplementation.Trim.Equals(EmptyStr), '', AddBreaklines(LvAllDeleteFunctionImplementation, '+') + sLineBreak),
+                                LvRequestClassDefinitions.ToString,
+                                LvRequestClassImplementations.ToString]);
+  finally
+    LvRequestClassDefinitions.Free;
+    LvRequestClassImplementations.Free;
+    LvKnownRequestClasses.Free;
+  end;
 
   //0: BaseURL
   //1: UserName

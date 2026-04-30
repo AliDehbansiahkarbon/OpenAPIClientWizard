@@ -68,6 +68,7 @@ resourcestring
     '  Client: TOpenAPIClient;' + sLineBreak +
     '  Response: string;' + sLineBreak +
     '  Choice: string;' + sLineBreak +
+    '%1:s' +
     'begin' + sLineBreak +
     '  Client := TOpenAPIClient.Create;' + sLineBreak +
     '  try' + sLineBreak +
@@ -534,6 +535,8 @@ resourcestring
   //13: PatchMethod Implementations
   //14: PutMethod Implementations
   //15: DeleteMethod Implementations
+  //16: Request model class definitions
+  //17: Request model class implementations
 
   sClientClassUnit =
     'unit OpenAPIClient;' + sLineBreak +
@@ -555,6 +558,7 @@ resourcestring
     '    function AddX(AKey: string; AValue: string): TDictionary<string, string>;' + sLineBreak +
     '  end;' + sLineBreak +
     sLineBreak +
+    '%16:s' +
     '  TOpenAPIClient = class' + sLineBreak +
     '  private' + sLineBreak +
     '    FPaths: TDictionary<string, string>;' + sLineBreak +
@@ -633,6 +637,7 @@ resourcestring
     '%13:s' + //sLineBreak +
     '%14:s' + //sLineBreak +
     '%15:s' + //sLineBreak +
+    '%17:s' + //sLineBreak +
 
     '{TDicHelper}' + sLineBreak +
     sLineBreak +
@@ -654,8 +659,10 @@ resourcestring
     'var' + sLineBreak +
     '  LvClient: TOpenAPIClient;' + sLineBreak +
     '  LvResponseStr: string;' + sLineBreak +
+    '%2:s' +
     'begin' + sLineBreak +
     '  LvClient := TOpenAPIClient.Create;' + sLineBreak +
+    '%3:s' +
     '  try' + sLineBreak +
     '    LvResponseStr := LvClient.%1:s;' + sLineBreak +
     '    FMemo.Lines.Clear;' + sLineBreak +
@@ -666,6 +673,7 @@ resourcestring
     '    ...' + sLineBreak +
     '    }' + sLineBreak +
     '  finally' + sLineBreak +
+    '%4:s' +
     '    LvClient.Free;' + sLineBreak +
     '  end;' + sLineBreak +
     'end;' + sLineBreak;

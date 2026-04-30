@@ -31,7 +31,25 @@
               "type": "object",
               "properties": {
                 "name": { "type": "string" },
-                "email": { "type": "string" }
+                "email": { "type": "string" },
+                "address": {
+                  "type": "object",
+                  "properties": {
+                    "line1": { "type": "string" },
+                    "city": { "type": "string" },
+                    "postalCode": { "type": "string" }
+                  }
+                },
+                "contacts": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "kind": { "type": "string" },
+                      "value": { "type": "string" }
+                    }
+                  }
+                }
               }
             }
           }

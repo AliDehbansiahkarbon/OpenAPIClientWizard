@@ -37,6 +37,7 @@ type
     FDescription: string;
     FContentType: string;
     FExample: string;
+    FSchemaJson: string;
     FRequired: Boolean;
     FProperties: TDictionary<string, string>;
   public
@@ -45,6 +46,7 @@ type
     property Description: string read FDescription write FDescription;
     property ContentType: string read FContentType write FContentType;
     property Example: string read FExample write FExample;
+    property SchemaJson: string read FSchemaJson write FSchemaJson;
     property Required: Boolean read FRequired write FRequired;
     property Properties: TDictionary<string, string> read FProperties write FProperties;
   end;
@@ -103,6 +105,42 @@ implementation
 
 { TMethodObject }
 
+function YamlScalarToJsonValue(AYamlNode: TYamlNode): TJSONValue;
+var
+  LvText: string;
+begin
+  LvText := AYamlNode.ToString;
+  Result := TJSONString.Create(LvText);
+end;
+
+function YamlNodeToJsonValue(AYamlNode: TYamlNode): TJSONValue;
+var
+  I: Integer;
+  LvObject: TJSONObject;
+  LvArray: TJSONArray;
+begin
+  if AYamlNode.IsNil then
+    Exit(TJSONString.Create(EmptyStr));
+
+  if AYamlNode.IsScalar then
+    Exit(YamlScalarToJsonValue(AYamlNode));
+
+  if AYamlNode.IsSequence then
+  begin
+    LvArray := TJSONArray.Create;
+    for I := 0 to Pred(AYamlNode.Count) do
+      LvArray.AddElement(YamlNodeToJsonValue(AYamlNode.Nodes[I]));
+
+    Exit(LvArray);
+  end;
+
+  LvObject := TJSONObject.Create;
+  for I := 0 to Pred(AYamlNode.Count) do
+    LvObject.AddPair(AYamlNode.Elements[I].Key.ToString, YamlNodeToJsonValue(AYamlNode.Elements[I].Value));
+
+  Result := LvObject;
+end;
+
 constructor TMethodObject.CreateJson(AJsonMethod: TJSONPair);
 var
   LvParam: TJSONPair;
@@ -148,6 +186,9 @@ begin
 
                 if Assigned(LvApplicationNode.FindValue(cJson_Schema)) then
                 begin
+                  if LvApplicationNode.FindValue(cJson_Schema) is TJSONObject then
+                    FRequestBody.SchemaJson := (LvApplicationNode.FindValue(cJson_Schema) as TJSONObject).ToJSON;
+
                   if Assigned(LvApplicationNode.FindValue(cJson_Schema).FindValue(cJson_Example)) then
                     FRequestBody.Example := LvApplicationNode.FindValue(cJson_Schema).FindValue(cJson_Example).Value;
                 end;
@@ -182,6 +223,7 @@ begin
                 if Assigned(LvApplicationNode.FindValue(cJson_Schema)) then
                 begin
                   LvSchema := LvApplicationNode.GetValue(cJson_Schema) as TJSONObject;
+                  FRequestBody.SchemaJson := LvSchema.ToJSON;
                   if Assigned(LvSchema.FindValue(cJson_Example)) then
                     FRequestBody.Example := LvSchema.FindValue(cJson_Example).Value;
                 end;
@@ -223,6 +265,7 @@ var
   LvYamlContent: TYamlNode;
   LvYamlSchema: TYamlNode;
   LvYamlProperties: TYamlNode;
+  LvSchemaJsonValue: TJSONValue;
   L: Integer;
 begin
   FRequestBody := TRequestBody.Create;
@@ -251,6 +294,12 @@ begin
           begin
             FRequestBody.ContentType := LvYamlContent.Elements[0].Key.ToString;
             LvYamlSchema := LvYamlContent.Elements[0].Value.Elements[0].Value;
+            LvSchemaJsonValue := YamlNodeToJsonValue(LvYamlSchema);
+            try
+              FRequestBody.SchemaJson := LvSchemaJsonValue.ToJSON;
+            finally
+              LvSchemaJsonValue.Free;
+            end;
 
             for K := 0 to Pred(LvYamlSchema.Count) do
             begin
@@ -296,6 +345,10 @@ procedure TMethodObject.LoadJsonParameters(AJsonParamArray: TJSONArray);
 var
   I: Integer;
   LvParameterObj: TJSONObject;
+  LvSchemaObj: TJSONObject;
+  LvProperties: TJSONObject;
+  LvProperty: TJSONPair;
+  J: Integer;
   LvName: string;
   LvIn: string;
   LvDescription: string;
@@ -335,6 +388,34 @@ begin
 
       if Assigned(LvParameterObj.FindValue(cJson_Required)) then
         LvRequired := LvParameterObj.GetValue(cJson_Required).AsType<Boolean>;
+
+      if LvIn.Trim.ToLower.Equals('body') then
+      begin
+        FRequestBody.Description := LvDescription;
+        FRequestBody.Required := LvRequired;
+        FRequestBody.ContentType := cJson_ApplicationJson;
+
+        if LvParameterObj.FindValue(cJson_Schema) is TJSONObject then
+        begin
+          LvSchemaObj := LvParameterObj.FindValue(cJson_Schema) as TJSONObject;
+          FRequestBody.SchemaJson := LvSchemaObj.ToJSON;
+
+          if Assigned(LvSchemaObj.FindValue(cJson_Example)) then
+            FRequestBody.Example := LvSchemaObj.FindValue(cJson_Example).ToJSON;
+
+          if LvSchemaObj.FindValue(cJson_Properties) is TJSONObject then
+          begin
+            LvProperties := LvSchemaObj.FindValue(cJson_Properties) as TJSONObject;
+            for J := 0 to Pred(LvProperties.Count) do
+            begin
+              LvProperty := LvProperties.Pairs[J];
+              if Assigned(LvProperty) and not FRequestBody.Properties.ContainsKey(LvProperty.JsonString.Value) then
+                FRequestBody.Properties.Add(LvProperty.JsonString.Value, SchemaDataType(LvProperty.JsonValue));
+            end;
+          end;
+        end;
+        Continue;
+      end;
 
       LvParameter := TParameter.Create(LvName, LvIn, LvDescription, LvType, LvRequired);
     except on E: Exception do

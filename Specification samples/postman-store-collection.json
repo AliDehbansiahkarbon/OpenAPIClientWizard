@@ -46,7 +46,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\"customerId\":42,\"status\":\"new\"}",
+              "raw": "{\"customerId\":42,\"status\":\"new\",\"shippingAddress\":{\"line1\":\"1 Main St\",\"city\":\"Berlin\",\"postalCode\":\"10115\"},\"items\":[{\"sku\":\"SKU-1\",\"quantity\":2},{\"sku\":\"SKU-2\",\"quantity\":1}]}",
               "options": {
                 "raw": {
                   "language": "json"

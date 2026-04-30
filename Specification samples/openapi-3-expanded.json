@@ -29,7 +29,30 @@
                 "properties": {
                   "name": { "type": "string" },
                   "price": { "type": "number" },
-                  "tags": { "type": "array", "items": { "type": "string" } }
+                  "tags": { "type": "array", "items": { "type": "string" } },
+                  "supplier": {
+                    "type": "object",
+                    "properties": {
+                      "name": { "type": "string" },
+                      "contact": {
+                        "type": "object",
+                        "properties": {
+                          "email": { "type": "string" },
+                          "phone": { "type": "string" }
+                        }
+                      }
+                    }
+                  },
+                  "variants": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "sku": { "type": "string" },
+                        "stock": { "type": "integer" }
+                      }
+                    }
+                  }
                 }
               }
             }

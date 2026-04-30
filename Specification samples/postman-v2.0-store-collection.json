@@ -29,7 +29,7 @@
         "method": "PATCH",
         "body": {
           "mode": "raw",
-          "raw": "{\"name\":\"Updated product\",\"price\":99.95}"
+          "raw": "{\"name\":\"Updated product\",\"price\":99.95,\"metadata\":{\"color\":\"blue\",\"dimensions\":{\"width\":12.5,\"height\":4.2}},\"tags\":[\"featured\",\"clearance\"]}"
         },
         "url": {
           "raw": "https://api.example.com/v2/products/:productId?validateOnly=false",

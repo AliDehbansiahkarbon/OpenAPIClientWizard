@@ -27,6 +27,7 @@ type
     FBooleanStringForm: Integer;
     FOutputType: TProjectOutputType;
     FConsoleSampleCall: string;
+    FConsoleSampleVars: string;
     class var FInstance: TSingletonSettingObj;
     class function GetInstance: TSingletonSettingObj; static;
   public
@@ -43,6 +44,7 @@ type
     property BooleanStringForm: Integer read FBooleanStringForm write FBooleanStringForm;
     property OutputType: TProjectOutputType read FOutputType write FOutputType;
     property ConsoleSampleCall: string read FConsoleSampleCall write FConsoleSampleCall;
+    property ConsoleSampleVars: string read FConsoleSampleVars write FConsoleSampleVars;
 
     class property Instance: TSingletonSettingObj read GetInstance;
   end;
