@@ -1,107 +1,168 @@
-<img width="200" height="200" src="https://github.com/AliDehbansiahkarbon/OpenAPIClientWizard/assets/5601608/9eab0937-90e4-46ae-bce2-29a24c02bd9d" alt=""/> 
+<p align="center">
+  <img width="180" height="180" src="https://github.com/AliDehbansiahkarbon/OpenAPIClientWizard/assets/5601608/9eab0937-90e4-46ae-bce2-29a24c02bd9d" alt="OpenAPIClientWizard logo">
+</p>
 
-# OpenAPIClientWizard(beta- no production ready)
+# OpenAPI Client Wizard
 
-Welcome to **OpenAPIClientWizard** – the ultimate plugin for RAD Studio that revolutionizes the way Delphi developers implement REST API clients.
+**OpenAPI Client Wizard** is a RAD Studio IDE plugin that generates Delphi REST API client projects from Swagger, OpenAPI, and Postman specifications.
 
-## Overview
+It is designed to remove the repetitive work of reading API documentation, translating every endpoint by hand, building request objects, wiring HTTP calls, and writing sample usage code. Give the wizard a supported specification and it generates a Delphi wrapper plus an optional ready-to-run sample project.
 
-As Delphi developers, we often face the challenge of implementing REST API clients. API documentation rarely includes Delphi code snippets, forcing us to read the documentation and implement each method - GET, POST, PUT, DELETE - manually. Even with Swagger or OpenAPI specifications, it's a time-consuming process. Without these specifications, we resort to tools like Delphi's REST Debugger or Postman, testing each method individually before coding them into our projects.
+## IDE Support
 
-**OpenAPIClientWizard** changes all that. This powerful plugin reads Swagger, OpenAPI specifications, or Postman collection and generates a fully implemented client-side sample(VCL) project in Delphi, ready to compile, in just 2-3 seconds!
+- Delphi 10.1 Berlin through Delphi 12.x Athens
+- VCL project generation
+- Console project generation
+- Wrapper/SDK-only generation
 
-## IDE Version support
-- **Supports from Delphi 10.1 Berlin to 12.x Athens**
+## Supported Inputs
 
-## Features
+- Swagger 2.0 JSON
+- OpenAPI 3.x JSON
+- OpenAPI 3.x YAML, including both `.yaml` and `.yml`
+- Postman Collection JSON
+- Legacy Postman collections with a top-level `requests` array
 
-- **Supports Swagger Specifications:** Handles JSON format effortlessly.
-- **Supports OpenAPI Specifications:** Handles both JSON and YAML formats effortlessly.
-- **Postman Collection Conversion:** Converts Postman collections into complete Delphi client projects.
-- **Rapid Project Generation:** Generates fully implemented client-side projects in seconds, saving you a huge time(weeks of development).
+Specifications can be loaded from an offline file or downloaded from a direct documentation URL.
 
+## Current Features
 
-## Benefits
+- Generates a strongly named Delphi client unit: `OpenAPIClient.pas`
+- Generates a reusable HTTP transport unit: `OpenAPITransport.pas`
+- Generates methods for common REST verbs, including `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `HEAD`, `OPTIONS`, `TRACE`, and `CONNECT`
+- Generates request DTO classes for request bodies
+- Supports nested request objects and arrays
+- Resolves local schema references for request DTO generation
+- Handles common composed request schemas such as `allOf`, `oneOf`, and `anyOf`
+- Escapes Delphi reserved words in generated identifiers
+- Generates VCL sample usage code for all discovered API methods
+- Generates console sample usage code for all discovered API methods
+- Supports wrapper/SDK-only generation when no sample UI is needed
+- Supports optional Base URL entry
+- Extracts the default Base URL from Swagger/OpenAPI/Postman data when available
+- Uses Bearer authentication by default in generated clients
+- Supports Basic and no-auth generation paths where configured
+- Detects `application/json`, `application/x-www-form-urlencoded`, and `multipart/form-data` request bodies
+- Includes offline specification samples for regression testing and manual verification
 
-- **Save Time:** Reduces weeks of work to mere seconds.
-- **Increase Productivity:** Focus on building amazing applications instead of spending time on repetitive coding tasks.
-- **Simplify Development:** Automate the creation of Delphi client-side projects from API specifications.
+## Output Modes
+
+The wizard can generate one of three project styles:
+
+| Mode | Description |
+| --- | --- |
+| VCL sample | Generates a VCL project with a polished sample form and usage code for the generated client. |
+| Console sample | Generates a console app with sample calls for all discovered API methods. |
+| Wrapper/SDK only | Generates only the reusable client and transport units. |
 
 ## Getting Started
 
-1. **Download and Install:** Follow the installation instructions in the repository.
-2. **Run OpenAPIClientWizard:** Open your RAD Studio IDE and run the plugin.
-3. **Create a new project** in RAD Studio by following this path: File/New/Other:
+1. Install or build the plugin package in RAD Studio.
+2. Open RAD Studio.
+3. Go to **File > New > Other**.
+4. Select **OpenAPI Client Project Wizard**.
 
+![Wizard entry](https://github.com/AliDehbansiahkarbon/OpenAPIClientWizard/assets/5601608/f0dfeae7-5d1a-49b6-b970-47e25d3b3944)
 
-![image](https://github.com/AliDehbansiahkarbon/OpenAPIClientWizard/assets/5601608/f0dfeae7-5d1a-49b6-b970-47e25d3b3944)
+5. Choose the specification format and source.
+6. Select the project output type.
+7. Optionally enter a Base URL. If it is left blank, the wizard attempts to extract it from the specification.
+8. Click **Create Client Project**.
 
-4. **Setup the project's preferences**
+![Wizard settings](https://github.com/user-attachments/assets/8b8d1c3b-a54b-4378-aaad-802852eb74b0)
 
+The generated project includes a ready-to-use `TOpenAPIClient` class and sample code that demonstrates how to call the discovered API methods.
 
-![image](https://github.com/user-attachments/assets/8b8d1c3b-a54b-4378-aaad-802852eb74b0)
+![Generated project](https://github.com/AliDehbansiahkarbon/OpenAPIClientWizard/assets/5601608/49ba1e0d-8b4a-4f08-89a8-85db0bcff9bf)
 
-   
-6. **Generate Your Project:** Provide your Swagger or OpenAPI specification, or Postman collection, and let the plugin do the rest.
+## Offline Specification Samples
 
-![image](https://github.com/AliDehbansiahkarbon/OpenAPIClientWizard/assets/5601608/49ba1e0d-8b4a-4f08-89a8-85db0bcff9bf)
+The repository includes a `Specification samples` folder with small, focused files for testing generation across supported formats:
 
+- Swagger 2.0 JSON
+- OpenAPI 3 JSON
+- OpenAPI 3 YAML
+- OpenAPI 3 `.yml`
+- Postman Collection v2.1
+- Postman Collection v2.0
+- Legacy Postman v1-style collection
 
+The expanded samples include nested request bodies so request DTO generation can be tested without relying on a live API.
 
-## Remarks
-**To download, you must provide the direct URL of the file; redirection is not supported.**
-**You cannot use the first URL to download the JSON specification, but the second one is acceptable.**
+## Notes And Limitations
 
-1- https://github.com/adewg/ICAR/blob/ADE-1/url-schemes/reproductionURLScheme.json ❌
+- For URL-based loading, provide a direct URL to the raw specification file.
+- GitHub page URLs are not raw file URLs. Use the raw file link instead.
+- Multipart request bodies are detected and their content type is propagated, but full file-upload transport support is still being expanded.
+- Streaming responses such as `text/event-stream` are currently generated as raw response strings.
+- Response DTO generation is planned; generated client methods currently return raw response text.
+- Very complex polymorphic schemas may still need additional generation rules.
 
-2- https://raw.githubusercontent.com/adewg/ICAR/ADE-1/url-schemes/reproductionURLScheme.json ✅
+Example:
 
+```text
+Not suitable:
+https://github.com/adewg/ICAR/blob/ADE-1/url-schemes/reproductionURLScheme.json
+
+Suitable:
+https://raw.githubusercontent.com/adewg/ICAR/ADE-1/url-schemes/reproductionURLScheme.json
+```
 
 ## Demo Video
-**Watch a short video [here](https://youtu.be/7B7nSHIsV64):** to learn how to use the plug-in (or click on the below image👇👇)
 
-<a href="https://youtu.be/7B7nSHIsV64" target="_blank"><img src="https://github.com/AliDehbansiahkarbon/OpenAPIClientWizard/assets/5601608/9015ca43-3d3a-4dfa-8436-1bbba7ac6fdd" width = "300" height = "300" /></a>
+Watch a short demo on YouTube(click on the image below):
+
+<a href="https://youtu.be/7B7nSHIsV64" target="_blank">
+  <img src="https://github.com/AliDehbansiahkarbon/OpenAPIClientWizard/assets/5601608/9015ca43-3d3a-4dfa-8436-1bbba7ac6fdd" width="300" height="300" alt="OpenAPIClientWizard demo video">
+</a>
+
+## Dependencies
+
+This plugin uses the Neslib YAML library for YAML parsing. The required source is included in this repository for convenience.
+
+You can find the upstream project here:
+
+https://github.com/neslib/Neslib.Json
 
 ## Support
 
-If you find OpenAPIClientWizard useful, please give it a **star**.
+If OpenAPI Client Wizard saves you time, please consider giving the repository a star.
 
-Your support is greatly appreciated!
+You can also support my work by buying me a coffee. This helps me continue developing this plugin and other Delphi tools such as [ChatGPTWizard](https://github.com/AliDehbansiahkarbon/ChatGPTWizard) and [EasyDBMigrator](https://github.com/AliDehbansiahkarbon/EasyDBMigrator).
 
-You can also support my work by buying me a coffee. This helps me continue developing this plugin and other tools like [ChatGPTWizard](https://github.com/AliDehbansiahkarbon/ChatGPTWizard) and [EasyDBMigrator](https://github.com/AliDehbansiahkarbon/EasyDBMigrator).
+<a href="https://www.buymeacoffee.com/adehbanr" target="_blank">
+  <img src="https://cdn.buymeacoffee.com/buttons/default-orange.png" alt="Buy Me A Coffee" height="41" width="174">
+</a>
 
-<a href="https://www.buymeacoffee.com/adehbanr" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/default-orange.png" alt="Buy Me A Coffee" height="41" width="174"></a>
+### Direct Support
 
-### Ask for direct support or specific implementation
+OpenAPI Client Wizard is provided as-is. If you need custom implementation work or direct support, contact me by email:
 
-OpenAPIClientWizard is provided as is. If you need any specific implementation contact me via [email](adehban@gmail.com), please.
+[adehban@gmail.com](mailto:adehban@gmail.com)
 
 ## Contributing
 
-Contributions are welcome! 
-If you have suggestions for improvements or find any issues, please open an issue or submit a pull request.
+Contributions are welcome. If you find a bug, have a sample specification that fails, or want to improve generation quality, please open an issue or submit a pull request.
+
+Good contributions include:
+
+- Small reproducible specifications
+- Generated Delphi compile errors
+- OpenAPI/Postman edge cases
+- Transport improvements
+- Sample project polish
+- Documentation fixes
 
 ## License
-This project is licensed under the MIT License. 
-See the LICENSE file for details.
 
-## Dependencies
-This plugin utilizes the Neslib library to parse Yaml format, which is included in the repository for convenience. 
-
-No action is required on your part. 
-
-However, you can find the latest source [here](https://github.com/neslib/Neslib.Json).
+This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
 
 ---
 
-Transform the way you develop REST API clients in Delphi with **OpenAPIClientWizard**. 
-
-Download it today and streamline your workflow!
-
-<hr>
 <p align="center">
-<img src="https://i0.wp.com/blogs.embarcadero.com/wp-content/uploads/2022/11/dlogonew-5582740.png?resize=254%2C242&ssl=1" alt="Delphi">
+  <img src="https://i0.wp.com/blogs.embarcadero.com/wp-content/uploads/2022/11/dlogonew-5582740.png?resize=254%2C242&ssl=1" alt="Delphi">
 </p>
+
 <h5 align="center">
-Made with :heart: on Delphi
+Made with :heart: in Delphi
 </h5>
