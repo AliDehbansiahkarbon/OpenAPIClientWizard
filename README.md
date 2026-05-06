@@ -5,7 +5,7 @@
 # OpenAPI Client Wizard
 
 **OpenAPI Client Wizard** is a RAD Studio IDE plugin that generates Delphi REST API client projects from Swagger, OpenAPI, and Postman specifications.
-
+# No AI!
 It is designed to remove the repetitive work of reading API documentation, translating every endpoint by hand, building request objects, wiring HTTP calls, and writing sample usage code. Give the wizard a supported specification and it generates a Delphi wrapper plus an optional ready-to-run sample project.
 
 ## IDE Support
